@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const TEMP_USER_ID = "temp-user-id";
 
 function Recipes() {
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
   const [recipes, setRecipes] = useState([]);
+  const [savedRecipeIds, setSavedRecipeIds] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -44,6 +46,28 @@ function Recipes() {
     fetchRecipes();
   }, [activeTab, searchTerm]);
 
+  useEffect(() => {
+    async function fetchSavedRecipes() {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/saved-recipes/user/${TEMP_USER_ID}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch saved recipes");
+        }
+
+        const data = await response.json();
+
+        setSavedRecipeIds(data.map((recipe) => String(recipe.recipeId)));
+      } catch (error) {
+        console.error("Failed to fetch saved recipes:", error);
+      }
+    }
+
+    fetchSavedRecipes();
+  }, []);
+
   const filteredRecipes =
     activeTab === "official"
       ? recipes
@@ -52,36 +76,42 @@ function Recipes() {
         );
 
   async function handleSave(recipe) {
-  try {
-    const savedRecipe = {
-      userId: "temp-user-id",
-      recipeId: String(recipe.id),
-      title: recipe.title || "",
-      description:
-        recipe.description ||
-        recipe.summary?.replace(/<[^>]*>/g, "").slice(0, 160) ||
-        "",
-      imageUrl: recipe.imageUrl || recipe.image || "",
-      readyInMinutes: recipe.readyInMinutes || 0,
-      sourceUrl: recipe.sourceUrl || "",
-      isExternal: activeTab === "official",
-    };
+    try {
+      const recipeId = String(recipe.id || recipe.recipeId);
 
-    const response = await fetch(`${API_URL}/api/saved-recipes`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(savedRecipe),
-    });
+      const savedRecipe = {
+        userId: TEMP_USER_ID,
+        recipeId,
+        title: recipe.title || "",
+        description:
+          recipe.description ||
+          recipe.summary?.replace(/<[^>]*>/g, "").slice(0, 160) ||
+          "",
+        imageUrl: recipe.imageUrl || recipe.image || "",
+        readyInMinutes: recipe.readyInMinutes || 0,
+        sourceUrl: recipe.sourceUrl || "",
+        isExternal: activeTab === "official",
+      };
 
-    if (!response.ok) {
-      throw new Error("Failed to save recipe");
+      const response = await fetch(`${API_URL}/api/saved-recipes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(savedRecipe),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save recipe");
+      }
+
+      setSavedRecipeIds((prev) =>
+        prev.includes(recipeId) ? prev : [...prev, recipeId]
+      );
+    } catch (error) {
+      console.error("Failed to save recipe:", error);
     }
-  } catch (error) {
-    console.error("Failed to save recipe:", error);
   }
-}
 
   return (
     <main className="recipes-page">
@@ -120,16 +150,14 @@ function Recipes() {
       {!loading && recipes.length > 0 && (
         <section className="recipes-grid">
           {filteredRecipes.map((recipe) => {
+            const recipeId = String(recipe.id || recipe.recipeId);
             const cleanSummary = recipe.summary?.replace(/<[^>]*>/g, "");
+            const isSaved = savedRecipeIds.includes(recipeId);
 
             return (
-              <article className="recipe-card" key={recipe.id || recipe.recipeId}>
+              <article className="recipe-card" key={recipeId}>
                 <img
-                  src={
-                    recipe.imageUrl ||
-                    recipe.image ||
-                    "/placeholder-image.png"
-                  }
+                  src={recipe.imageUrl || recipe.image || "/placeholder-image.png"}
                   alt={recipe.title || "Recipe"}
                   className="recipe-image"
                 />
@@ -145,11 +173,12 @@ function Recipes() {
                 </p>
 
                 <button
-                  className="save-button"
+                  className={`save-button ${isSaved ? "saved" : ""}`}
                   onClick={() => handleSave(recipe)}
                   aria-label="Save recipe"
+                  disabled={isSaved}
                 >
-                  ☆
+                  {isSaved ? "★" : "☆"}
                 </button>
               </article>
             );
