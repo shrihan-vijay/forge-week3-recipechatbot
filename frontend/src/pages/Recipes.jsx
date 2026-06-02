@@ -5,6 +5,7 @@ function Recipes() {
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
   const [recipes, setRecipes] = useState([]);
+  
 
   useEffect(() => {
     async function fetchRecipes() {

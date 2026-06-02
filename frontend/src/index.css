@@ -81,7 +81,7 @@ img {
 nav,
 .navbar,
 .nav-bar {
-  height: 82px;
+  height: 60px;
   width: 100%;
   background-color: var(--nav-bg);
   border-bottom: 1px solid var(--border);
@@ -97,7 +97,7 @@ nav h1,
 .logo,
 .brand {
   font-family: var(--heading);
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text);
 }
@@ -106,7 +106,7 @@ nav a,
 .navbar a,
 .nav-bar a {
   font-family: var(--heading);
-  font-size: 28px;
+  font-size: 18px;
   font-weight: 500;
   color: var(--text);
 }
@@ -124,7 +124,7 @@ nav ul,
 
 main {
   background: var(--bg);
-  min-height: calc(100vh - 82px);
+  min-height: calc(100vh - 60px);
 }
 
 @media (max-width: 900px) {
@@ -143,6 +143,6 @@ main {
   nav a,
   .navbar a,
   .nav-bar a {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
