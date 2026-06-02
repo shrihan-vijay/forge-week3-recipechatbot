@@ -52,38 +52,36 @@ function Recipes() {
         );
 
   async function handleSave(recipe) {
-    try {
-      const recipeToSave = {
-        recipeId: String(recipe.id),
-        title: recipe.title || "",
-        description:
-          recipe.description ||
-          recipe.summary?.replace(/<[^>]*>/g, "").slice(0, 160) ||
-          "",
-        imageUrl: recipe.imageUrl || recipe.image || "",
-        readyInMinutes: recipe.readyInMinutes || 0,
-        ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || [],
-        sourceUrl: recipe.sourceUrl || "",
-        isExternal: true,
-        status: "approved",
-      };
+  try {
+    const savedRecipe = {
+      userId: "temp-user-id",
+      recipeId: String(recipe.id),
+      title: recipe.title || "",
+      description:
+        recipe.description ||
+        recipe.summary?.replace(/<[^>]*>/g, "").slice(0, 160) ||
+        "",
+      imageUrl: recipe.imageUrl || recipe.image || "",
+      readyInMinutes: recipe.readyInMinutes || 0,
+      sourceUrl: recipe.sourceUrl || "",
+      isExternal: activeTab === "official",
+    };
 
-      const response = await fetch(`${API_URL}/api/recipes/external`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(recipeToSave),
-      });
+    const response = await fetch(`${API_URL}/api/saved-recipes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(savedRecipe),
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to save recipe");
-      }
-    } catch (error) {
-      console.error("Failed to save recipe:", error);
+    if (!response.ok) {
+      throw new Error("Failed to save recipe");
     }
+  } catch (error) {
+    console.error("Failed to save recipe:", error);
   }
+}
 
   return (
     <main className="recipes-page">
