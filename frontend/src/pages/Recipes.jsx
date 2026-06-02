@@ -5,7 +5,10 @@ function Recipes() {
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
   const [recipes, setRecipes] = useState([]);
+<<<<<<< HEAD
   
+=======
+>>>>>>> 05fcc0b (feat/rebase: moved pages into src, removed vite icons, added recipes.jsx and styling)
 
   useEffect(() => {
     async function fetchRecipes() {
