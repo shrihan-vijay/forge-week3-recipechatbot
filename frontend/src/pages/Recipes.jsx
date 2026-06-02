@@ -1,44 +1,85 @@
 import { useEffect, useState } from "react";
 import "../styles/Recipes.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+
 function Recipes() {
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
   const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function fetchRecipes() {
       try {
+        setLoading(true);
+
+        const params = new URLSearchParams();
+
+        if (activeTab === "official" && searchTerm.trim()) {
+          params.append("search", searchTerm.trim());
+        }
+
         const endpoint =
           activeTab === "official"
-            ? "http://localhost:5001/api/recipes/official"
-            : "http://localhost:5001/api/recipes/community";
+            ? `${API_URL}/api/spoonacular/recipes?${params.toString()}`
+            : `${API_URL}/api/recipes`;
 
         const response = await fetch(endpoint);
-        const data = await response.json();
 
-        setRecipes(data.recipes || data);
+        if (!response.ok) {
+          throw new Error("Failed to fetch recipes");
+        }
+
+        const data = await response.json();
+        setRecipes(Array.isArray(data) ? data : data.recipes || data.results || []);
       } catch (error) {
         console.error("Failed to fetch recipes:", error);
+        setRecipes([]);
+      } finally {
+        setLoading(false);
       }
     }
 
     fetchRecipes();
-  }, [activeTab]);
+  }, [activeTab, searchTerm]);
 
-  const filteredRecipes = recipes.filter((recipe) =>
-    recipe.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRecipes =
+    activeTab === "official"
+      ? recipes
+      : recipes.filter((recipe) =>
+          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
 
   async function handleSave(recipe) {
     try {
-      await fetch("http://localhost:5001/api/recipes/save", {
+      const recipeToSave = {
+        recipeId: String(recipe.id),
+        title: recipe.title || "",
+        description:
+          recipe.description ||
+          recipe.summary?.replace(/<[^>]*>/g, "").slice(0, 160) ||
+          "",
+        imageUrl: recipe.imageUrl || recipe.image || "",
+        readyInMinutes: recipe.readyInMinutes || 0,
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [],
+        sourceUrl: recipe.sourceUrl || "",
+        isExternal: true,
+        status: "approved",
+      };
+
+      const response = await fetch(`${API_URL}/api/recipes/external`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(recipe),
+        body: JSON.stringify(recipeToSave),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to save recipe");
+      }
     } catch (error) {
       console.error("Failed to save recipe:", error);
     }
@@ -74,28 +115,49 @@ function Recipes() {
         </button>
       </div>
 
-      <section className="recipes-grid">
-        {filteredRecipes.map((recipe) => (
-          <article className="recipe-card" key={recipe.id || recipe._id}>
-            <img
-              src={recipe.image || "/placeholder-image.png"}
-              alt={recipe.name}
-              className="recipe-image"
-            />
+      {loading && <p>Loading recipes...</p>}
 
-            <h3>{recipe.name}</h3>
-            <p>{recipe.description || recipe.cuisine || "Description"}</p>
+      {!loading && recipes.length === 0 && <p>No recipes found.</p>}
 
-            <button
-              className="save-button"
-              onClick={() => handleSave(recipe)}
-              aria-label="Save recipe"
-            >
-              ☆
-            </button>
-          </article>
-        ))}
-      </section>
+      {!loading && recipes.length > 0 && (
+        <section className="recipes-grid">
+          {filteredRecipes.map((recipe) => {
+            const cleanSummary = recipe.summary?.replace(/<[^>]*>/g, "");
+
+            return (
+              <article className="recipe-card" key={recipe.id || recipe.recipeId}>
+                <img
+                  src={
+                    recipe.imageUrl ||
+                    recipe.image ||
+                    "/placeholder-image.png"
+                  }
+                  alt={recipe.title || "Recipe"}
+                  className="recipe-image"
+                />
+
+                <h3>{recipe.title || "Recipe Name"}</h3>
+
+                <p>
+                  {recipe.description ||
+                    cleanSummary?.slice(0, 90) ||
+                    (recipe.readyInMinutes
+                      ? `${recipe.readyInMinutes} mins`
+                      : "Description")}
+                </p>
+
+                <button
+                  className="save-button"
+                  onClick={() => handleSave(recipe)}
+                  aria-label="Save recipe"
+                >
+                  ☆
+                </button>
+              </article>
+            );
+          })}
+        </section>
+      )}
     </main>
   );
 }
