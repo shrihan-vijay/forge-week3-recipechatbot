@@ -43,9 +43,13 @@ const syncSpoonacularTags = async (spoonacularRecipe) => {
 
 // format data from spoonacular recipes
 const mapSpoonacularToSchema = (data) => {
+    const cleanDescription = data.summary
+        ? data.summary.replace(/<[^>]*>/g, "").split(".")[0] + "."
+        : "";
+
     return {
         title: data.title || "",
-        description: data.summary || "",
+        description: cleanDescription || "",
         readyInMinutes: data.readyInMinutes || 0,
         imageUrl: data.image || "",
         ingredients: data.extendedIngredients 
@@ -70,7 +74,7 @@ router.get('/search', async (req, res) => {
             params: {
                 apiKey: SPOONACULAR_API_KEY,
                 query: query,
-                number: number || 10,
+                number: number || 12,
                 addRecipeInformation: true
             }
         });
@@ -93,9 +97,42 @@ router.get('/search', async (req, res) => {
     }
 });
 
+router.get('/random', async (req, res) => {
+    const { number } = req.query;
+
+    try {
+        const response = await axios.get(`${SPOONACULAR_BASE_URL}/random`, {
+            params: {
+                apiKey: SPOONACULAR_API_KEY,
+                number: number || 12,
+            }
+        });
+
+        const mappedRecipes = response.data.recipes.map(recipe => ({
+            id: String(recipe.id),
+            isExternal: true,
+            ...mapSpoonacularToSchema(recipe),
+            rawTags: [
+                ...(recipe.cuisines || []),
+                ...(recipe.diets || []),
+                ...(recipe.dishTypes || [])
+            ]
+        }));
+
+        res.status(200).json(mappedRecipes);
+    } catch (error) {
+        console.error('Error fetching random recipes:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Error fetching random recipes' });
+    }
+});
+
 // get recipe details (and sync tags)
 router.get('/:id', async (req, res) => {
     const spoonacularId = req.params.id;
+
+    if (!/^\d+$/.test(spoonacularId)) {
+        return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
 
     try {
         const cachedRecipe = await getRecipeById(spoonacularId);

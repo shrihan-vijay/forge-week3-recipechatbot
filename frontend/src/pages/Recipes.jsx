@@ -15,17 +15,23 @@ function Recipes() {
     async function fetchRecipes() {
       try {
         setLoading(true);
-
         const params = new URLSearchParams();
 
         if (activeTab === "official" && searchTerm.trim()) {
-          params.append("search", searchTerm.trim());
+          params.append("query", searchTerm.trim());
         }
 
         const endpoint =
           activeTab === "official"
-            ? `${API_URL}/api/spoonacular/recipes?${params.toString()}`
-            : `${API_URL}/api/recipes`;
+            ? searchTerm.trim()
+              ? `${API_URL}/api/spoonacular/search?query=${searchTerm.trim()}&number=12`
+              : `${API_URL}/api/spoonacular/random?number=12`
+            : `${API_URL}/recipe`;
+
+        // if (activeTab === "official" && !searchTerm.trim()) {
+        //   setRecipes([]);
+        //   return;
+        // }
 
         const response = await fetch(endpoint);
 
@@ -34,7 +40,7 @@ function Recipes() {
         }
 
         const data = await response.json();
-        setRecipes(Array.isArray(data) ? data : data.recipes || data.results || []);
+        setRecipes(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch recipes:", error);
         setRecipes([]);
@@ -49,9 +55,7 @@ function Recipes() {
   useEffect(() => {
     async function fetchSavedRecipes() {
       try {
-        const response = await fetch(
-          `${API_URL}/api/saved-recipes/user/${TEMP_USER_ID}`
-        );
+        const response = await fetch(`${API_URL}/recipe/user/${TEMP_USER_ID}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch saved recipes");
@@ -59,7 +63,7 @@ function Recipes() {
 
         const data = await response.json();
 
-        setSavedRecipeIds(data.map((recipe) => String(recipe.recipeId)));
+        setSavedRecipeIds(data.map((recipe) => String(recipe.recipeId || recipe.id)));
       } catch (error) {
         console.error("Failed to fetch saved recipes:", error);
       }
@@ -72,44 +76,45 @@ function Recipes() {
     activeTab === "official"
       ? recipes
       : recipes.filter((recipe) =>
-          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
   async function handleSave(recipe) {
+    if (activeTab !== "official") {
+      console.warn("Bookmarking community recipes is not supported by this endpoint yet.");
+      return;
+    }
+
     try {
       const recipeId = String(recipe.id || recipe.recipeId);
 
-      const savedRecipe = {
-        userId: TEMP_USER_ID,
+      const recipePayload = {
         recipeId,
         title: recipe.title || "",
-        description:
-          recipe.description ||
-          recipe.summary?.replace(/<[^>]*>/g, "").slice(0, 160) ||
-          "",
-        imageUrl: recipe.imageUrl || recipe.image || "",
+        description: recipe.description || "",
+        imageUrl: recipe.imageUrl || "",
         readyInMinutes: recipe.readyInMinutes || 0,
-        sourceUrl: recipe.sourceUrl || "",
-        isExternal: activeTab === "official",
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || []
       };
 
-      const response = await fetch(`${API_URL}/api/saved-recipes`, {
+      const response = await fetch(`${API_URL}/recipe/external`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(savedRecipe),
+        body: JSON.stringify(recipePayload),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save recipe");
+        throw new Error("Failed to process recipe request");
       }
 
       setSavedRecipeIds((prev) =>
         prev.includes(recipeId) ? prev : [...prev, recipeId]
       );
     } catch (error) {
-      console.error("Failed to save recipe:", error);
+      console.error("Error updates on recipe action:", error);
     }
   }
 
@@ -172,14 +177,16 @@ function Recipes() {
                       : "Description")}
                 </p>
 
-                <button
-                  className={`save-button ${isSaved ? "saved" : ""}`}
-                  onClick={() => handleSave(recipe)}
-                  aria-label="Save recipe"
-                  disabled={isSaved}
-                >
-                  {isSaved ? "★" : "☆"}
-                </button>
+                {activeTab === "official" && (
+                  <button
+                    className={`save-button ${isSaved ? "saved" : ""}`}
+                    onClick={() => handleSave(recipe)}
+                    aria-label="Save recipe"
+                    disabled={isSaved}
+                  >
+                    {isSaved ? "★" : "☆"}
+                  </button>
+                )}
               </article>
             );
           })}
