@@ -1,13 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Router, RouterProvider } from 'react-router-dom';
-import Landing from '../pages/Landing.jsx';
-import Home from '../pages/Home.jsx';
-import Recipes from '../pages/Recipes.jsx';
-import RecipeDetails from '../pages/RecipeDetails.jsx';
-import CreateRecipes from '../pages/CreateRecipes.jsx';
-import MyRecipes from '../pages/MyRecipes.jsx';
-import AdminDashboard from '../pages/AdminDashboard.jsx';
+import Landing from './pages/Landing.jsx';
+import Home from './pages/Home.jsx';
+import Recipes from './pages/Recipes.jsx';
+import RecipeDetails from './pages/RecipeDetails.jsx';
+import CreateRecipes from './pages/CreateRecipes.jsx';
+import MyRecipes from './pages/MyRecipes.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
 import './index.css';
 import App from './App.jsx';
 

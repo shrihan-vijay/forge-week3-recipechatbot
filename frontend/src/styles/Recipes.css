@@ -1,0 +1,125 @@
+.recipes-page {
+  padding: 44px 56px;
+  background-color: #f7f7f6;
+  min-height: calc(100vh - 82px);
+  color: #1f1f1f;
+}
+
+.recipes-page h2 {
+  margin: 0 0 32px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.recipes-search {
+  width: 220px;
+  height: 28px;
+  margin-bottom: 36px;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #ddd8d0;
+  border-radius: 999px;
+  padding: 0 12px;
+}
+
+.recipes-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+}
+
+.recipes-search input::placeholder {
+  color: #b9b9b9;
+}
+
+.recipes-search span {
+  font-size: 15px;
+}
+
+.recipes-toggle {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.recipes-toggle button {
+  width: 100px;
+  height: 28px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background-color: #d3c8b8;
+  color: #222;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.recipes-toggle button.active {
+  background-color: #8da0bc;
+  color: white;
+  border-color: #5d6f89;
+}
+
+.recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 202px);
+  gap: 40px 36px;
+}
+
+.recipe-card {
+  background-color: #b7cede;
+  border-radius: 5px;
+  width: 202px;
+  min-height: 240px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.recipe-image {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 16px;
+  background-color: #e7e7e7;
+}
+
+.recipe-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.recipe-card p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #666;
+}
+
+.save-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #928875;
+  background-color: #fff4df;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+@media (max-width: 1000px) {
+  .recipes-grid {
+    grid-template-columns: repeat(3, 202px);
+  }
+}
+
+@media (max-width: 760px) {
+  .recipes-page {
+    padding: 32px 24px;
+  }
+
+  .recipes-grid {
+    grid-template-columns: repeat(2, 202px);
+  }
+}
