@@ -24,4 +24,9 @@ app.get("/", (req, res) => {
   res.send("Express backend is running and Firebase is connected");
 });
 
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`Server is happily running on port ${PORT}`);
+});
+
 module.exports = app;

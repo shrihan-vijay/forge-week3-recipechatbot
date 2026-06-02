@@ -9,7 +9,7 @@ const {
     deleteUser,
     saveRecipeToUser,
     unsaveRecipeFromUser,
-} = require('../db/users.db.js');
+} = require('../db/user.db.js');
 
 const router = express.Router();
 
