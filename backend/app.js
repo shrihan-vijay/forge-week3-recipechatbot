@@ -8,11 +8,7 @@ const userRoutes = require("./routes/user.routes.js");
 const recipeRoutes = require("./routes/recipe.routes.js");
 const tagRoutes = require("./routes/tag.routes.js");
 const commentRoutes = require("./routes/comment.routes.js");
-<<<<<<< HEAD
 const spoonacular = require("./utility/spoonacular.js");
-=======
-const spoonacularRoutes = require("./routes/spoonacular.routes.js");
->>>>>>> 08b46d7 (feat: added spoonacular api routes)
 
 const app = express();
 
