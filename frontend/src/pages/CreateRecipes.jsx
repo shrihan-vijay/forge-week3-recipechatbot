@@ -3,16 +3,6 @@ import "../styles/CreateRecipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 const TEMP_USER_ID = "temp-user-id";
-const RECOMMENDED_TAGS = [
-  "breakfast",
-  "lunch",
-  "dinner",
-  "healthy",
-  "dessert",
-  "vegetarian",
-  "quick",
-  "comfort food",
-];
 
 const initialForm = {
   title: "",
@@ -155,13 +145,6 @@ export default function CreateRecipes() {
     }
   }
 
-  const trimmedTagInput = tagInput.trim().toLowerCase();
-  const filteredRecommendedTags = trimmedTagInput
-    ? RECOMMENDED_TAGS.filter((tag) => tag.includes(trimmedTagInput)).filter(
-        (tag) => !selectedTags.includes(tag)
-      )
-    : [];
-
   return (
     <main className="create-recipe-page">
       <form className="create-recipe-layout" onSubmit={(event) => event.preventDefault()}>
@@ -198,29 +181,17 @@ export default function CreateRecipes() {
             />
           </label>
 
-          <div className="tag-combobox">
-            <label className="field tag-search-field">
-              Search Tags
-              <input
-                name="tagInput"
-                type="text"
-                placeholder="ex. breakfast, healthy, dinner"
-                value={tagInput}
-                onChange={(event) => setTagInput(event.target.value)}
-                onKeyDown={handleTagKeyDown}
-              />
-            </label>
-
-            {filteredRecommendedTags.length > 0 && (
-              <div className="tag-dropdown" aria-label="Recommended tags">
-                {filteredRecommendedTags.slice(0, 5).map((tag) => (
-                  <button type="button" key={tag} onClick={() => addTag(tag)}>
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <label className="field tag-search-field">
+            Search Tags
+            <input
+              name="tagInput"
+              type="text"
+              placeholder="ex. breakfast, healthy, dinner"
+              value={tagInput}
+              onChange={(event) => setTagInput(event.target.value)}
+              onKeyDown={handleTagKeyDown}
+            />
+          </label>
 
           <div className="tag-preview" aria-label="Selected tags">
             {selectedTags.map((tag) => (
@@ -236,13 +207,13 @@ export default function CreateRecipes() {
               <input
                 name="ingredient"
                 type="text"
-                placeholder="List ingredient"
+                placeholder="List item"
                 value={ingredientInput}
                 onChange={(event) => setIngredientInput(event.target.value)}
                 onKeyDown={handleIngredientKeyDown}
               />
               <button type="button" onClick={addIngredient}>
-                Add
+                Add item
               </button>
             </div>
             <ul className="ingredients-list">
@@ -260,7 +231,7 @@ export default function CreateRecipes() {
         </section>
 
         <section className="create-recipe-right">
-          <label className="field title-field">
+          <label className="field figma-field title-field">
             Recipe Name
             <input
               name="title"
@@ -272,7 +243,7 @@ export default function CreateRecipes() {
             />
           </label>
 
-          <label className="field">
+          <label className="field figma-field by-user-field">
             By User
             <input
               name="creatorName"
@@ -284,7 +255,7 @@ export default function CreateRecipes() {
             />
           </label>
 
-          <label className="field">
+          <label className="field compact-field">
             Ready In Minutes
             <input
               name="readyInMinutes"
@@ -296,7 +267,7 @@ export default function CreateRecipes() {
             />
           </label>
 
-          <label className="field">
+          <label className="field figma-field">
             Recipe Description
             <textarea
               name="description"
@@ -307,7 +278,7 @@ export default function CreateRecipes() {
             />
           </label>
 
-          <label className="field">
+          <label className="field figma-field">
             Instructions
             <textarea
               name="instructions"
