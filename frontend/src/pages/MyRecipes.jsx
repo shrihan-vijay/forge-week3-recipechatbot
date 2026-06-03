@@ -65,6 +65,7 @@ function MyRecipes() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+           <span>⌕</span>
         </div>
 
         <button
