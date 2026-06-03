@@ -9,6 +9,7 @@ const recipeRoutes = require("./routes/recipe.routes.js");
 const tagRoutes = require("./routes/tag.routes.js");
 const commentRoutes = require("./routes/comment.routes.js");
 const spoonacular = require("./utility/spoonacular.js");
+const chat = require("./routes/chat.routes.js");
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/recipe", recipeRoutes);
 app.use("/tag", tagRoutes);
 app.use("/recipe/:recipeId/comment", commentRoutes);
 app.use("/api/spoonacular", spoonacular);
+app.use("/message", chat);
 
 app.get("/", (req, res) => {
   res.send("Express backend is running and Firebase is connected");
