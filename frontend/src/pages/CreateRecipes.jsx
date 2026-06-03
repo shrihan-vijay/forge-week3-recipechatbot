@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import "../styles/CreateRecipes.css";
+import { useUser } from '../context/UserContext.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 const TEMP_USER_ID = "temp-user-id";
 
 const initialForm = {
   title: "",
-  creatorName: "",
   description: "",
   instructions: "",
   readyInMinutes: "",
@@ -21,6 +21,7 @@ export default function CreateRecipes() {
   const [ingredientInput, setIngredientInput] = useState("");
   const [ingredients, setIngredients] = useState([]);
   const [status, setStatus] = useState("");
+  const { user } = useUser();
 
   useEffect(() => {
     return () => {
@@ -117,8 +118,8 @@ export default function CreateRecipes() {
   async function handleSubmit() {
     setStatus("");
 
-    if (!form.title.trim() || !form.creatorName.trim()) {
-      setStatus("Recipe name and user name are required.");
+    if (!form.title.trim()) {
+      setStatus("Recipe name is required.");
       return;
     }
 
@@ -150,8 +151,8 @@ export default function CreateRecipes() {
 
       const payload = {
         title: form.title.trim(),
-        userId: TEMP_USER_ID,
-        creatorName: form.creatorName.trim(),
+        userId: user?.id || TEMP_USER_ID,
+        creatorName: user?.fullName || "Anonymous",
         description: form.description.trim(),
         ingredients,
         instructions: instructionSteps,
@@ -270,18 +271,6 @@ export default function CreateRecipes() {
               type="text"
               placeholder="Insert Recipe Name"
               value={form.title}
-              onChange={handleChange}
-              required
-            />
-          </label>
-
-          <label className="field figma-field by-user-field">
-            By User
-            <input
-              name="creatorName"
-              type="text"
-              placeholder="Your name"
-              value={form.creatorName}
               onChange={handleChange}
               required
             />
