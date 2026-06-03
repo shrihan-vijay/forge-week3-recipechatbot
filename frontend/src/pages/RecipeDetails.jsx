@@ -38,6 +38,11 @@ export default function RecipeDetails() {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewName, setReviewName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
     async function loadRecipe() {
@@ -194,11 +199,129 @@ export default function RecipeDetails() {
       </div>
 
       {/* Reviews section */}
-      {comments.length > 0 && (
-        <div className="border-t border-[#e8e0cc] pt-8">
-          <h2 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-5">
-            Reviews
-          </h2>
+      <div className="border-t border-[#e8e0cc] pt-8">
+        <h2 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-5">
+          Reviews
+        </h2>
+
+        {/* Submit review form */}
+        <div className="bg-[#FDFAF2] border border-[#e8e0cc] rounded-xl p-5 mb-6">
+          <h3 className="text-sm font-semibold text-[#3a2e1e] mb-3">
+            Leave a review
+          </h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!reviewRating) {
+                setSubmitError("Please select a rating.");
+                return;
+              }
+              setSubmitting(true);
+              setSubmitError(null);
+              try {
+                const res = await fetch(
+                  `${API_URL}/recipe/${recipeId}/comment`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      userId: reviewName.trim(),
+                      username: reviewName.trim(),
+                      rating: reviewRating,
+                      text: reviewText.trim(),
+                    }),
+                  }
+                );
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  throw new Error(data.message || "Failed to submit review");
+                }
+                const newComment = await res.json();
+                setComments((prev) => [...prev, newComment]);
+
+                // Update displayed rating
+                const newCount = (recipe.ratingCount || 0) + 1;
+                const newAvg =
+                  ((recipe.averageRating || 0) * (recipe.ratingCount || 0) +
+                    reviewRating) /
+                  newCount;
+                setRecipe((prev) => ({
+                  ...prev,
+                  averageRating: newAvg,
+                  ratingCount: newCount,
+                }));
+
+                // Update backend rating
+                fetch(`${API_URL}/recipe/${recipeId}/rating`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    averageRating: newAvg,
+                    ratingCount: newCount,
+                  }),
+                });
+
+                setReviewRating(0);
+                setReviewText("");
+                setReviewName("");
+              } catch (err) {
+                setSubmitError(err.message);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            className="space-y-3"
+          >
+            <div>
+              <label className="block text-xs text-[#3a2e1e]/60 mb-1">
+                Name
+              </label>
+              <input
+                type="text"
+                value={reviewName}
+                onChange={(e) => setReviewName(e.target.value)}
+                required
+                className="w-full max-w-xs border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a]"
+                placeholder="Your name"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#3a2e1e]/60 mb-1">
+                Rating
+              </label>
+              <StarRating
+                rating={reviewRating}
+                interactive
+                onRate={setReviewRating}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#3a2e1e]/60 mb-1">
+                Comment
+              </label>
+              <textarea
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                required
+                rows={3}
+                className="w-full border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a] resize-none"
+                placeholder="Write your review..."
+              />
+            </div>
+            {submitError && (
+              <p className="text-xs text-red-600">{submitError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-[#c4a96a] text-white text-sm font-medium rounded-lg hover:bg-[#b09858] disabled:opacity-50 transition-colors"
+            >
+              {submitting ? "Submitting..." : "Submit Review"}
+            </button>
+          </form>
+        </div>
+
+        {comments.length > 0 && (
           <div className="space-y-5">
             {comments.map((comment) => (
               <div
@@ -217,8 +340,8 @@ export default function RecipeDetails() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
