@@ -13,7 +13,7 @@ const {
     arrayRemove,
     Timestamp,
 } = require("firebase/firestore");
-const { db } = require("../firebase.js");
+const db = require("../firebase.js");
 
 // Create or update a user document
 const saveUser = async (userId, userData) => {

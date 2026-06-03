@@ -11,7 +11,7 @@ const {
     setDoc,
     Timestamp,
 } = require("firebase/firestore");
-const { db } = require("../firebase.js");
+const db = require("../firebase.js");
 
 // Create a new tag (auto-generated ID)
 const createTag = async (name) => {

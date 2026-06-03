@@ -5,24 +5,58 @@ const {
     updatePassword,
     updateAuthUsername,
     deleteAuthRecord,
+    getAuthRecordByUsername
 } = require('../db/auth.db.js');
+const { saveUser, getUserById } = require('../db/user.db.js');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
-// Register a new auth record
+// Register
 router.post('/register', async (req, res) => {
-    const { userId, username, hashPassword } = req.body;
+    const { username, password, email, fullName } = req.body;
 
-    if (!userId?.trim()) return res.status(400).json({ message: 'User ID is required' });
     if (!username?.trim()) return res.status(400).json({ message: 'Username is required' });
-    if (!hashPassword?.trim()) return res.status(400).json({ message: 'Password is required' });
+    if (!password?.trim()) return res.status(400).json({ message: 'Password is required' });
+    if (!email?.trim()) return res.status(400).json({ message: 'Email is required' });
 
     try {
-        const record = await createAuthRecord(userId, username, hashPassword);
-        res.status(201).json(record);
+        const existing = await getAuthRecordByUsername(username);
+        if (existing) return res.status(409).json({ message: 'Username already taken' });
+
+        const userId = crypto.randomUUID();
+        const hashPassword = await bcrypt.hash(password, 10);
+
+        await createAuthRecord(userId, username, hashPassword);
+        const user = await saveUser(userId, { username, email, fullName: fullName || '' });
+
+        res.status(201).json({ userId, username, email, fullName: fullName || '' });
     } catch (error) {
-        console.error('Error creating auth record:', error);
-        res.status(500).json({ message: 'Error creating auth record', error: error.message });
+        console.error('Error registering user:', error);
+        res.status(500).json({ message: 'Error registering user', error: error.message });
+    }
+});
+
+// Login
+router.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username?.trim()) return res.status(400).json({ message: 'Username is required' });
+    if (!password?.trim()) return res.status(400).json({ message: 'Password is required' });
+
+    try {
+        const authRecord = await getAuthRecordByUsername(username);
+        if (!authRecord) return res.status(401).json({ message: 'Invalid username or password' });
+
+        const match = await bcrypt.compare(password, authRecord.hashPassword);
+        if (!match) return res.status(401).json({ message: 'Invalid username or password' });
+
+        const user = await getUserById(authRecord.userId);
+        res.status(200).json(user);
+    } catch (error) {
+        console.error('Error logging in:', error);
+        res.status(500).json({ message: 'Error logging in', error: error.message });
     }
 });
 

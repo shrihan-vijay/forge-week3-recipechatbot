@@ -13,7 +13,7 @@ const BasketIcon = () => (
 );
 
 const navLinks = [
-    { label: "Home", path: "/" },
+    { label: "Home", path: "/home" },
     { label: "Admin", path: "/admin" },
     { label: "Recipes", path: "/recipes" },
     { label: "My Recipes", path: "/myrecipes" },
