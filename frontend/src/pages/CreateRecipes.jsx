@@ -35,7 +35,6 @@ export default function CreateRecipes() {
 
   function handleImageUpload(event) {
     const file = event.target.files?.[0];
-
     if (!file) return;
 
     setImagePreview(URL.createObjectURL(file));
@@ -43,7 +42,6 @@ export default function CreateRecipes() {
 
   function addTag(tagName) {
     const nextTag = tagName.trim().toLowerCase();
-
     if (!nextTag) return;
 
     setSelectedTags((prev) =>
@@ -65,7 +63,6 @@ export default function CreateRecipes() {
 
   function addIngredient() {
     const nextIngredient = ingredientInput.trim();
-
     if (!nextIngredient) return;
 
     setIngredients((prev) => [...prev, nextIngredient]);
@@ -101,7 +98,8 @@ export default function CreateRecipes() {
     const instructionSteps = form.instructions
       .split("\n")
       .map((step) => step.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((step) => ({ step }));
 
     if (instructionSteps.length === 0) {
       setStatus("Add instructions before submitting.");
@@ -136,6 +134,7 @@ export default function CreateRecipes() {
       setForm(initialForm);
       setImagePreview("");
       setSelectedTags([]);
+      setTagInput("");
       setIngredientInput("");
       setIngredients([]);
       setStatus("Recipe submitted for admin review.");
@@ -147,7 +146,10 @@ export default function CreateRecipes() {
 
   return (
     <main className="create-recipe-page">
-      <form className="create-recipe-layout" onSubmit={(event) => event.preventDefault()}>
+      <form
+        className="create-recipe-layout"
+        onSubmit={(event) => event.preventDefault()}
+      >
         <section className="create-recipe-left">
           <div className="image-preview">
             {imagePreview || form.imageUrl ? (
@@ -205,6 +207,7 @@ export default function CreateRecipes() {
 
           <section className="ingredients-section">
             <h2>Ingredients List</h2>
+
             <div className="ingredient-entry">
               <input
                 name="ingredient"
@@ -214,10 +217,12 @@ export default function CreateRecipes() {
                 onChange={(event) => setIngredientInput(event.target.value)}
                 onKeyDown={handleIngredientKeyDown}
               />
+
               <button type="button" onClick={addIngredient}>
                 Add item
               </button>
             </div>
+
             <ul className="ingredients-list">
               {ingredients.map((ingredient, index) => (
                 <li key={`${ingredient}-${index}`}>
@@ -229,7 +234,6 @@ export default function CreateRecipes() {
               ))}
             </ul>
           </section>
-
         </section>
 
         <section className="create-recipe-right">
@@ -284,7 +288,7 @@ export default function CreateRecipes() {
             Instructions
             <textarea
               name="instructions"
-              placeholder="List instructions"
+              placeholder="List instructions, one step per line"
               value={form.instructions}
               onChange={handleChange}
               rows="16"
@@ -292,7 +296,11 @@ export default function CreateRecipes() {
             />
           </label>
 
-          <button className="submit-recipe-button" type="button" onClick={handleSubmit}>
+          <button
+            className="submit-recipe-button"
+            type="button"
+            onClick={handleSubmit}
+          >
             Submit Recipe
           </button>
 
