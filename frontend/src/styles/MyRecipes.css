@@ -27,12 +27,8 @@
   display: flex;
   flex-direction: column;
 }
-.my-recipes-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 48px;
-}
+
+/* Search */
 
 /* Search */
 
@@ -41,6 +37,7 @@
 .search-wrapper {
   width: 300px;
   height: 38px;
+  margin-bottom: 48px;
   display: flex;
   align-items: center;
   background: white;
