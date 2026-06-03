@@ -9,12 +9,12 @@ const initialForm = {
   creatorName: "",
   description: "",
   instructions: "",
-  imageUrl: "",
   readyInMinutes: "",
 };
 
 export default function CreateRecipes() {
   const [form, setForm] = useState(initialForm);
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -37,7 +37,41 @@ export default function CreateRecipes() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+  }
+
+  async function uploadImageToS3() {
+    const presignResponse = await fetch(`${API_URL}/upload/presigned-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName: imageFile.name,
+        fileType: imageFile.type,
+      }),
+    });
+
+    if (!presignResponse.ok) {
+      throw new Error("Could not get S3 upload URL");
+    }
+
+    const { uploadUrl, publicUrl } = await presignResponse.json();
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": imageFile.type,
+      },
+      body: imageFile,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("Could not upload image to S3");
+    }
+
+    return publicUrl;
   }
 
   function addTag(tagName) {
@@ -56,7 +90,6 @@ export default function CreateRecipes() {
 
   function handleTagKeyDown(event) {
     if (event.key !== "Enter") return;
-
     event.preventDefault();
     addTag(tagInput);
   }
@@ -77,7 +110,6 @@ export default function CreateRecipes() {
 
   function handleIngredientKeyDown(event) {
     if (event.key !== "Enter") return;
-
     event.preventDefault();
     addIngredient();
   }
@@ -95,6 +127,11 @@ export default function CreateRecipes() {
       return;
     }
 
+    if (!imageFile) {
+      setStatus("Upload an image before submitting.");
+      return;
+    }
+
     const instructionSteps = form.instructions
       .split("\n")
       .map((step) => step.trim())
@@ -106,19 +143,23 @@ export default function CreateRecipes() {
       return;
     }
 
-    const payload = {
-      title: form.title.trim(),
-      userId: TEMP_USER_ID,
-      creatorName: form.creatorName.trim(),
-      description: form.description.trim(),
-      ingredients,
-      instructions: instructionSteps,
-      tags: selectedTags,
-      imageUrl: form.imageUrl.trim(),
-      readyInMinutes: Number(form.readyInMinutes) || 0,
-    };
-
     try {
+      setStatus("Uploading recipe...");
+
+      const imageUrl = await uploadImageToS3();
+
+      const payload = {
+        title: form.title.trim(),
+        userId: TEMP_USER_ID,
+        creatorName: form.creatorName.trim(),
+        description: form.description.trim(),
+        ingredients,
+        instructions: instructionSteps,
+        tags: selectedTags,
+        imageUrl,
+        readyInMinutes: Number(form.readyInMinutes) || 0,
+      };
+
       const response = await fetch(`${API_URL}/recipe`, {
         method: "POST",
         headers: {
@@ -132,6 +173,7 @@ export default function CreateRecipes() {
       }
 
       setForm(initialForm);
+      setImageFile(null);
       setImagePreview("");
       setSelectedTags([]);
       setTagInput("");
@@ -152,11 +194,8 @@ export default function CreateRecipes() {
       >
         <section className="create-recipe-left">
           <div className="image-preview">
-            {imagePreview || form.imageUrl ? (
-              <img
-                src={imagePreview || form.imageUrl}
-                alt="Recipe preview"
-              />
+            {imagePreview ? (
+              <img src={imagePreview} alt="Recipe preview" />
             ) : (
               <span>Image preview</span>
             )}
@@ -169,19 +208,6 @@ export default function CreateRecipes() {
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
-            />
-          </label>
-
-          <p className="image-or-divider">OR</p>
-
-          <label className="field">
-            Image URL
-            <input
-              name="imageUrl"
-              type="url"
-              placeholder="Put image URL here"
-              value={form.imageUrl}
-              onChange={handleChange}
             />
           </label>
 
