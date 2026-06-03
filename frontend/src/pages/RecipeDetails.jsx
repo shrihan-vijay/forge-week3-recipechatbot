@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
+import { useUser } from "../context/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
@@ -34,13 +35,13 @@ function StarRating({ rating, interactive = false, onRate }) {
 export default function RecipeDetails() {
   const { recipeId } = useParams();
   const { fetchRecipeById } = useRecipes();
+  const { user } = useUser();
   const [recipe, setRecipe] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
-  const [reviewName, setReviewName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -205,6 +206,7 @@ export default function RecipeDetails() {
         </h2>
 
         {/* Submit review form */}
+        {user ? (
         <div className="bg-[#FDFAF2] border border-[#e8e0cc] rounded-xl p-5 mb-6">
           <h3 className="text-sm font-semibold text-[#3a2e1e] mb-3">
             Leave a review
@@ -225,8 +227,8 @@ export default function RecipeDetails() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      userId: reviewName.trim(),
-                      username: reviewName.trim(),
+                      userId: user.id || user.uid,
+                      username: user.username || user.displayName || user.name,
                       rating: reviewRating,
                       text: reviewText.trim(),
                     }),
@@ -263,7 +265,6 @@ export default function RecipeDetails() {
 
                 setReviewRating(0);
                 setReviewText("");
-                setReviewName("");
               } catch (err) {
                 setSubmitError(err.message);
               } finally {
@@ -272,19 +273,6 @@ export default function RecipeDetails() {
             }}
             className="space-y-3"
           >
-            <div>
-              <label className="block text-xs text-[#3a2e1e]/60 mb-1">
-                Name
-              </label>
-              <input
-                type="text"
-                value={reviewName}
-                onChange={(e) => setReviewName(e.target.value)}
-                required
-                className="w-full max-w-xs border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a]"
-                placeholder="Your name"
-              />
-            </div>
             <div>
               <label className="block text-xs text-[#3a2e1e]/60 mb-1">
                 Rating
@@ -320,6 +308,11 @@ export default function RecipeDetails() {
             </button>
           </form>
         </div>
+        ) : (
+        <p className="text-sm text-[#3a2e1e]/50 mb-6">
+          Log in to leave a review.
+        </p>
+        )}
 
         {comments.length > 0 && (
           <div className="space-y-5">
