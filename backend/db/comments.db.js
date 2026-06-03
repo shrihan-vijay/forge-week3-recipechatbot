@@ -8,7 +8,7 @@ const {
     doc,
     Timestamp,
 } = require("firebase/firestore");
-const { db } = require("../firebase.js");
+const db = require("../firebase.js");
 
 // Add a comment (and rating) to a recipe
 const addComment = async (recipeId, commentData) => {

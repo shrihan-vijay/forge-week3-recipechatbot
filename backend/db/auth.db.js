@@ -4,8 +4,12 @@ const {
     deleteDoc,
     doc,
     setDoc,
+    collection,
+    query,
+    where,
+    getDocs,
 } = require("firebase/firestore");
-const { db } = require("../firebase.js");
+const db = require("../firebase.js");
 
 // Create an auth record (call this alongside saveUser when registering)
 // hashPassword should already be hashed before being passed in — never store plaintext
@@ -30,6 +34,14 @@ const getAuthRecord = async (userId) => {
     return authDoc.exists() ? { id: authDoc.id, ...authDoc.data() } : null;
 };
 
+const getAuthRecordByUsername = async (username) => {
+    const q = query(collection(db, "auth"), where("username", "==", username));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    const d = snapshot.docs[0];
+    return { id: d.id, ...d.data() };
+};
+
 // Update hashed password (e.g. password reset flow)
 const updatePassword = async (userId, newHashPassword) => {
     await updateDoc(doc(db, "auth", userId), { hashPassword: newHashPassword });
@@ -51,4 +63,5 @@ module.exports = {
     updatePassword,
     updateAuthUsername,
     deleteAuthRecord,
+    getAuthRecordByUsername
 };
