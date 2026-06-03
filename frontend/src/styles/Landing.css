@@ -42,7 +42,6 @@
 
 .app-title {
     color: #8c2f39;
-    /* Deep strawberry/wine red */
     font-size: 2.5rem;
     margin: 0 0 10px 0;
     font-weight: 800;
@@ -50,20 +49,17 @@
 
 .welcome-message {
     color: #5c5552;
-    /* Soft earthy brown/grey */
     font-size: 1.1rem;
     line-height: 1.6;
     margin-bottom: 30px;
 }
 
-/* Button Layout */
 .auth-buttons {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-/* Base button styles */
 .btn {
     padding: 14px 28px;
     font-size: 1.1rem;
@@ -74,7 +70,6 @@
     border: none;
 }
 
-/* Primary "Sign Up" Button - Strawberry Red */
 .btn-primary {
     background-color: #d94e5a;
     color: white;
@@ -86,7 +81,6 @@
     transform: translateY(-2px);
 }
 
-/* Secondary "Log In" Button - Wicker/Cream Tone */
 .btn-secondary {
     background-color: #f7ede2;
     color: #6d4c41;
@@ -98,12 +92,10 @@
     transform: translateY(-2px);
 }
 
-/* Optional: Active click state for buttons */
 .btn:active {
     transform: translateY(0);
 }
 
-/* Animation to give the basket a slight cheerful tilt */
 @keyframes wobble {
 
     0%

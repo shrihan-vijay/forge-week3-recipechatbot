@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { useUser } from '../context/UserContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import '../styles/AuthModal.css';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
@@ -74,67 +75,66 @@ export default function AuthModal({ isOpen, onClose, mode, setMode }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-[#e8cbb0] overflow-hidden">
+        <div className="auth-overlay">
+            <div className="auth-modal">
 
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 p-1 rounded-full text-[#746f67] hover:bg-gray-100 transition-colors"
-                >
+                <button onClick={onClose} className="auth-close-btn" aria-label="Close modal">
                     <X size={20} />
                 </button>
 
-                <div className="p-6 pb-4 text-center">
-                    <h2 className="text-3xl font-extrabold text-[#8c2f39]">
+                <div className="auth-header">
+                    <h2 className="auth-title">
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
                     </h2>
-                    <p className="text-sm text-[#746f67] mt-1">
+                    <p className="auth-subtitle">
                         {isSignUp ? 'Join The Picnic Basket community!' : 'Unpack your favorite recipes.'}
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
+                <form onSubmit={handleSubmit} className="auth-form auth-form-space">
                     {isSignUp && (
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="auth-grid-split">
                             <div>
-                                <label className="block text-xs font-semibold text-[#2b2418] mb-1">First Name</label>
-                                <input type="text" name="firstName" required value={formData.firstName} onChange={handleChange} placeholder="Jane" className="w-full px-3 py-2 border border-[#d8d0bf] rounded-lg text-sm" />
+                                <label className="auth-label">First Name</label>
+                                <input type="text" name="firstName" required value={formData.firstName} onChange={handleChange} placeholder="Jane" className="auth-input" />
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-[#2b2418] mb-1">Last Name</label>
-                                <input type="text" name="lastName" required value={formData.lastName} onChange={handleChange} placeholder="Doe" className="w-full px-3 py-2 border border-[#d8d0bf] rounded-lg text-sm" />
+                                <label className="auth-label">Last Name</label>
+                                <input type="text" name="lastName" required value={formData.lastName} onChange={handleChange} placeholder="Doe" className="auth-input" />
                             </div>
                         </div>
                     )}
 
                     {isSignUp && (
                         <div>
-                            <label className="block text-xs font-semibold text-[#2b2418] mb-1">Email Address</label>
-                            <input type="email" name="email" required value={formData.email} onChange={handleChange} placeholder="jane@example.com" className="w-full px-3 py-2 border border-[#d8d0bf] rounded-lg text-sm" />
+                            <label className="auth-label">Email Address</label>
+                            <input type="email" name="email" required value={formData.email} onChange={handleChange} placeholder="jane@example.com" className="auth-input" />
                         </div>
                     )}
 
                     <div>
-                        <label className="block text-xs font-semibold text-[#2b2418] mb-1">Username</label>
-                        <input type="text" name="username" required value={formData.username} onChange={handleChange} placeholder="picnic_lover" className="w-full px-3 py-2 border border-[#d8d0bf] rounded-lg text-sm" />
+                        <label className="auth-label">Username</label>
+                        <input type="text" name="username" required value={formData.username} onChange={handleChange} placeholder="picnic_lover" className="auth-input" />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-[#2b2418] mb-1">Password</label>
-                        <input type="password" name="password" required value={formData.password} onChange={handleChange} placeholder="••••••••" className="w-full px-3 py-2 border border-[#d8d0bf] rounded-lg text-sm" />
+                        <label className="auth-label">Password</label>
+                        <input type="password" name="password" required value={formData.password} onChange={handleChange} placeholder="••••••••" className="auth-input" />
                     </div>
-                    {error && <p className="text-sm text-red-600 text-center -mb-2">{error}</p>}
-                    <button type="submit" className="w-full mt-2 py-2.5 bg-[#d94e5a] text-white rounded-full font-semibold hover:bg-[#be3b47] transition-all shadow-md">
+
+                    {error && <p className="auth-error">{error}</p>}
+
+                    <button type="submit" className="auth-submit-btn">
                         {isSignUp ? 'Sign Up' : 'Log In'}
                     </button>
                 </form>
 
-                <div className="px-6 py-4 bg-[#fcfaf7] border-t border-[#d8d0bf] text-center text-sm text-[#746f67]">
+                <div className="auth-footer">
                     {isSignUp ? "Already have an account? " : "New to the basket? "}
                     <button
                         type="button"
                         onClick={() => setMode(isSignUp ? 'login' : 'signup')}
-                        className="text-[#8c2f39] font-bold hover:underline focus:outline-none"
+                        className="auth-toggle-btn"
                     >
                         {isSignUp ? 'Log In' : 'Create an account'}
                     </button>
