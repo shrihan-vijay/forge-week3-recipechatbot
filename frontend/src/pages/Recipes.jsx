@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
+import { useAuth } from "../context/AuthContext";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
-const TEMP_USER_ID = "temp-user-id";
 
 function Recipes() {
   const {
@@ -14,6 +14,9 @@ function Recipes() {
     searchRecipes,
   } = useRecipes();
 
+  const { user } = useAuth();
+  const userId = user?.uid;
+
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
   const [officialRecipes, setOfficialRecipes] = useState([]);
@@ -21,30 +24,30 @@ function Recipes() {
   const [savedRecipeIds, setSavedRecipeIds] = useState([]);
 
   useEffect(() => {
-  async function fetchOfficialRecipes() {
-    try {
-      setOfficialLoading(true);
+    async function fetchOfficialRecipes() {
+      try {
+        setOfficialLoading(true);
 
-      const response = await fetch(`${API_URL}/recipe/official`);
+        const response = await fetch(`${API_URL}/recipe/official`);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch official recipes");
+        if (!response.ok) {
+          throw new Error("Failed to fetch official recipes");
+        }
+
+        const data = await response.json();
+        setOfficialRecipes(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to fetch official recipes:", error);
+        setOfficialRecipes([]);
+      } finally {
+        setOfficialLoading(false);
       }
-
-      const data = await response.json();
-      setOfficialRecipes(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to fetch official recipes:", error);
-      setOfficialRecipes([]);
-    } finally {
-      setOfficialLoading(false);
     }
-  }
 
-  if (activeTab === "official") {
-    fetchOfficialRecipes();
-  }
-}, [activeTab]);
+    if (activeTab === "official") {
+      fetchOfficialRecipes();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== "community") return;
@@ -58,8 +61,10 @@ function Recipes() {
 
   useEffect(() => {
     async function fetchSavedRecipes() {
+      if (!userId) return;
+
       try {
-        const response = await fetch(`${API_URL}/recipe/user/${TEMP_USER_ID}/saved`);
+        const response = await fetch(`${API_URL}/recipe/user/${userId}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch saved recipes");
@@ -76,9 +81,14 @@ function Recipes() {
     }
 
     fetchSavedRecipes();
-  }, []);
+  }, [userId]);
 
   async function handleSave(recipe) {
+    if (!userId) {
+      console.warn("User must be logged in to save recipes.");
+      return;
+    }
+
     try {
       const recipeId = String(recipe.id || recipe.recipeId);
 
@@ -87,7 +97,7 @@ function Recipes() {
         source: activeTab,
       };
 
-      const response = await fetch(`${API_URL}/recipe/save/${TEMP_USER_ID}`, {
+      const response = await fetch(`${API_URL}/recipe/save/${userId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -108,11 +118,11 @@ function Recipes() {
   }
 
   const recipes =
-  activeTab === "official"
-    ? officialRecipes.filter((recipe) =>
-        recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : communityRecipes;
+    activeTab === "official"
+      ? officialRecipes.filter((recipe) =>
+          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : communityRecipes;
 
   const loading =
     activeTab === "official" ? officialLoading : communityLoading;
