@@ -111,15 +111,11 @@ const getAllRecipes = async () => {
 
 // Get all approved community recipes
 const getApprovedRecipes = async () => {
-    const q = query(
-        collection(db, "recipes"),
-        where("status", "==", "approved")
-    );
-
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(collection(db, "recipes"));
 
     return snapshot.docs
         .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((recipe) => recipe.status === "approved")
         .filter((recipe) => recipe.isExternal !== true);
 };
 
@@ -180,20 +176,24 @@ const deleteRecipe = async (recipeId) => {
 
 // Search approved community recipes by title
 const searchApprovedRecipes = async (searchTerm) => {
-    const q = query(
-        collection(db, "recipes"),
-        where("status", "==", "approved")
-    );
-
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(collection(db, "recipes"));
     const term = searchTerm.toLowerCase();
 
     return snapshot.docs
         .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((recipe) => recipe.status === "approved")
         .filter((recipe) => recipe.isExternal !== true)
         .filter((recipe) =>
             recipe.title && recipe.title.toLowerCase().includes(term)
         );
+};
+
+const getOfficialRecipes = async () => {
+    const snapshot = await getDocs(collection(db, "recipes"));
+
+    return snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((recipe) => recipe.isExternal === true);
 };
 
 module.exports = {
