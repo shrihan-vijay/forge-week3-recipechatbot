@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
-import { useAuth } from "../context/AuthContext";
+import { useUser } from "../context/UserContext.jsx";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -14,8 +14,8 @@ function Recipes() {
     searchRecipes,
   } = useRecipes();
 
-  const { user } = useAuth();
-  const userId = user?.uid;
+  const { user } = useUser();
+  const userId = user?.uid || user?.id;
 
   const [activeTab, setActiveTab] = useState("official");
   const {
@@ -77,7 +77,10 @@ function Recipes() {
 
       try {
         const response = await fetch(`${API_URL}/recipe/user/${userId}`);
-
+        if (!userId) {
+          console.warn("User must be logged in to save recipes.");
+          return;
+        }
         if (!response.ok) {
           throw new Error("Failed to fetch saved recipes");
         }
