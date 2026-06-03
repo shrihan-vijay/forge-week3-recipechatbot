@@ -1,55 +1,131 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles/CreateRecipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 const TEMP_USER_ID = "temp-user-id";
+const RECOMMENDED_TAGS = [
+  "breakfast",
+  "lunch",
+  "dinner",
+  "healthy",
+  "dessert",
+  "vegetarian",
+  "quick",
+  "comfort food",
+];
 
 const initialForm = {
   title: "",
   creatorName: "",
   description: "",
-  ingredients: "",
   instructions: "",
-  tags: "",
   imageUrl: "",
   readyInMinutes: "",
 };
 
-function toLines(value) {
-  return value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function toTags(value) {
-  return value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
-
 export default function CreateRecipes() {
   const [form, setForm] = useState(initialForm);
+  const [imagePreview, setImagePreview] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [ingredientInput, setIngredientInput] = useState("");
+  const [ingredients, setIngredients] = useState([]);
   const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   function handleChange(event) {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  async function handleSubmit(event) {
+  function handleImageUpload(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  function addTag(tagName) {
+    const nextTag = tagName.trim().toLowerCase();
+
+    if (!nextTag) return;
+
+    setSelectedTags((prev) =>
+      prev.includes(nextTag) ? prev : [...prev, nextTag]
+    );
+    setTagInput("");
+  }
+
+  function removeTag(tagName) {
+    setSelectedTags((prev) => prev.filter((tag) => tag !== tagName));
+  }
+
+  function handleTagKeyDown(event) {
+    if (event.key !== "Enter") return;
+
     event.preventDefault();
+    addTag(tagInput);
+  }
+
+  function addIngredient() {
+    const nextIngredient = ingredientInput.trim();
+
+    if (!nextIngredient) return;
+
+    setIngredients((prev) => [...prev, nextIngredient]);
+    setIngredientInput("");
+  }
+
+  function removeIngredient(indexToRemove) {
+    setIngredients((prev) =>
+      prev.filter((_, index) => index !== indexToRemove)
+    );
+  }
+
+  function handleIngredientKeyDown(event) {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+    addIngredient();
+  }
+
+  async function handleSubmit() {
     setStatus("");
+
+    if (!form.title.trim() || !form.creatorName.trim()) {
+      setStatus("Recipe name and user name are required.");
+      return;
+    }
+
+    if (ingredients.length === 0) {
+      setStatus("Add at least one ingredient.");
+      return;
+    }
+
+    const instructionSteps = form.instructions
+      .split("\n")
+      .map((step) => step.trim())
+      .filter(Boolean);
+
+    if (instructionSteps.length === 0) {
+      setStatus("Add instructions before submitting.");
+      return;
+    }
 
     const payload = {
       title: form.title.trim(),
       userId: TEMP_USER_ID,
       creatorName: form.creatorName.trim(),
       description: form.description.trim(),
-      ingredients: toLines(form.ingredients),
-      instructions: toLines(form.instructions),
-      tags: toTags(form.tags),
+      ingredients,
+      instructions: instructionSteps,
+      tags: selectedTags,
       imageUrl: form.imageUrl.trim(),
       readyInMinutes: Number(form.readyInMinutes) || 0,
     };
@@ -68,6 +144,10 @@ export default function CreateRecipes() {
       }
 
       setForm(initialForm);
+      setImagePreview("");
+      setSelectedTags([]);
+      setIngredientInput("");
+      setIngredients([]);
       setStatus("Recipe submitted for admin review.");
     } catch (error) {
       console.error("Failed to create recipe:", error);
@@ -75,57 +155,108 @@ export default function CreateRecipes() {
     }
   }
 
+  const trimmedTagInput = tagInput.trim().toLowerCase();
+  const filteredRecommendedTags = trimmedTagInput
+    ? RECOMMENDED_TAGS.filter((tag) => tag.includes(trimmedTagInput)).filter(
+        (tag) => !selectedTags.includes(tag)
+      )
+    : [];
+
   return (
     <main className="create-recipe-page">
-      <form className="create-recipe-layout" onSubmit={handleSubmit}>
+      <form className="create-recipe-layout" onSubmit={(event) => event.preventDefault()}>
         <section className="create-recipe-left">
           <div className="image-preview">
-            {form.imageUrl ? (
-              <img src={form.imageUrl} alt="Recipe preview" />
+            {imagePreview || form.imageUrl ? (
+              <img
+                src={imagePreview || form.imageUrl}
+                alt="Recipe preview"
+              />
             ) : (
               <span>Image preview</span>
             )}
           </div>
 
           <label className="field">
+            Upload Image
+            <input
+              name="imageFile"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
+          </label>
+
+          <label className="field">
             Image URL
             <input
               name="imageUrl"
               type="url"
-              placeholder="https://example.com/recipe.jpg"
+              placeholder="Put image URL here"
               value={form.imageUrl}
               onChange={handleChange}
             />
           </label>
 
-          <label className="field">
-            Tags
-            <input
-              name="tags"
-              type="text"
-              placeholder="breakfast, healthy, dessert"
-              value={form.tags}
-              onChange={handleChange}
-            />
-          </label>
+          <div className="tag-combobox">
+            <label className="field tag-search-field">
+              Search Tags
+              <input
+                name="tagInput"
+                type="text"
+                placeholder="ex. breakfast, healthy, dinner"
+                value={tagInput}
+                onChange={(event) => setTagInput(event.target.value)}
+                onKeyDown={handleTagKeyDown}
+              />
+            </label>
 
-          <div className="tag-preview">
-            {toTags(form.tags).map((tag) => (
-              <span key={tag}>{tag}</span>
+            {filteredRecommendedTags.length > 0 && (
+              <div className="tag-dropdown" aria-label="Recommended tags">
+                {filteredRecommendedTags.slice(0, 5).map((tag) => (
+                  <button type="button" key={tag} onClick={() => addTag(tag)}>
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="tag-preview" aria-label="Selected tags">
+            {selectedTags.map((tag) => (
+              <button type="button" key={tag} onClick={() => removeTag(tag)}>
+                {tag}
+              </button>
             ))}
           </div>
 
-          <label className="field">
-            Ingredients List
-            <textarea
-              name="ingredients"
-              placeholder={"1 cup flour\n2 eggs\n1 tsp vanilla"}
-              value={form.ingredients}
-              onChange={handleChange}
-              rows="7"
-              required
-            />
-          </label>
+          <section className="ingredients-section">
+            <h2>Ingredients List</h2>
+            <div className="ingredient-entry">
+              <input
+                name="ingredient"
+                type="text"
+                placeholder="List ingredient"
+                value={ingredientInput}
+                onChange={(event) => setIngredientInput(event.target.value)}
+                onKeyDown={handleIngredientKeyDown}
+              />
+              <button type="button" onClick={addIngredient}>
+                Add
+              </button>
+            </div>
+            <ul className="ingredients-list">
+              {ingredients.map((ingredient, index) => (
+                <li key={`${ingredient}-${index}`}>
+                  <span>{ingredient}</span>
+                  <button type="button" onClick={() => removeIngredient(index)}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
         </section>
 
         <section className="create-recipe-right">
@@ -172,7 +303,7 @@ export default function CreateRecipes() {
               placeholder="Describe the recipe..."
               value={form.description}
               onChange={handleChange}
-              rows="6"
+              rows="9"
             />
           </label>
 
@@ -180,15 +311,15 @@ export default function CreateRecipes() {
             Instructions
             <textarea
               name="instructions"
-              placeholder={"Mix ingredients\nBake for 20 minutes\nLet cool before serving"}
+              placeholder="List instructions"
               value={form.instructions}
               onChange={handleChange}
-              rows="12"
+              rows="16"
               required
             />
           </label>
 
-          <button className="submit-recipe-button" type="submit">
+          <button className="submit-recipe-button" type="button" onClick={handleSubmit}>
             Submit Recipe
           </button>
 
