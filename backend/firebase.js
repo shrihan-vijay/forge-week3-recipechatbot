@@ -15,4 +15,4 @@ const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app);
 
-module.exports = { db };
+module.exports = db;
