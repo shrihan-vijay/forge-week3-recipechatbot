@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
 import { useUser } from "../context/UserContext";
+import Chatbot from '../components/Chatbot.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
@@ -486,6 +487,7 @@ export default function RecipeDetails() {
           </div>
         </div>
       )}
+      <Chatbot recipe={recipe} />
     </div>
   );
 }
