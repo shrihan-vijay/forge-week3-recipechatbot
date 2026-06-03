@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -33,6 +33,8 @@ function StarRating({ rating, interactive = false, onRate }) {
 
 export default function RecipeDetails() {
   const { recipeId } = useParams();
+  const [searchParams] = useSearchParams();
+  const source = searchParams.get("source") || "community";
   const { fetchRecipeById } = useRecipes();
   const [recipe, setRecipe] = useState(null);
   const [comments, setComments] = useState([]);
@@ -40,27 +42,54 @@ export default function RecipeDetails() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function loadRecipe() {
-      try {
-        const [recipeData, commentsRes] = await Promise.all([
-          fetchRecipeById(recipeId),
-          fetch(`${API_URL}/recipe/${recipeId}/comment`).then((res) =>
-            res.ok ? res.json() : []
-          ),
-        ]);
+  async function loadRecipe() {
+    try {
+      setLoading(true);
 
-        if (!recipeData) throw new Error("Recipe not found");
-        setRecipe(recipeData);
-        setComments(Array.isArray(commentsRes) ? commentsRes : []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+      const recipePromise =
+        source === "official"
+          ? fetch(`${API_URL}/api/spoonacular/${recipeId}`).then((res) =>
+              res.ok ? res.json() : null
+            )
+          : fetchRecipeById(recipeId);
+
+      const [recipeData, commentsRes] = await Promise.all([
+        recipePromise,
+        fetch(`${API_URL}/recipe/${recipeId}/comment`).then((res) =>
+          res.ok ? res.json() : []
+        ),
+      ]);
+
+      if (!recipeData) throw new Error("Recipe not found");
+
+      const normalizedRecipe =
+        source === "official"
+          ? {
+              ...recipeData,
+              imageUrl: recipeData.image,
+              description: recipeData.summary?.replace(/<[^>]*>/g, ""),
+              ingredients:
+                recipeData.extendedIngredients?.map(
+                  (item) => item.original || item.name
+                ) || [],
+              instructions:
+                recipeData.analyzedInstructions?.[0]?.steps?.map(
+                  (step) => step.step
+                ) || [],
+            }
+          : recipeData;
+
+      setRecipe(normalizedRecipe);
+      setComments(Array.isArray(commentsRes) ? commentsRes : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    loadRecipe();
-  }, [recipeId, fetchRecipeById]);
+  loadRecipe();
+}, [recipeId, source, fetchRecipeById]);
 
   if (loading) {
     return (

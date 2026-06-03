@@ -2,7 +2,9 @@ const express = require('express');
 const {
     createRecipe,
     saveExternalRecipe,
+    saveRecipeForUser,
     getRecipeById,
+    getSavedRecipesByUser,
     getAllRecipes,
     getApprovedRecipes,
     getPendingRecipes,
@@ -17,12 +19,13 @@ const {
 
 const router = express.Router();
 
-// Search approved recipes by title
 router.get('/search', async (req, res) => {
     const { query } = req.query;
+
     if (!query?.trim()) {
         return res.status(400).json({ message: 'Search query is required' });
     }
+
     try {
         const recipes = await searchApprovedRecipes(query.trim());
         res.status(200).json(recipes);
@@ -32,7 +35,6 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Get all approved recipes (public feed)
 router.get('/', async (req, res) => {
     try {
         const recipes = await getApprovedRecipes();
@@ -43,7 +45,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get all recipes (admin use)
 router.get('/all', async (req, res) => {
     try {
         const recipes = await getAllRecipes();
@@ -54,7 +55,6 @@ router.get('/all', async (req, res) => {
     }
 });
 
-// Get all pending recipes (admin review queue)
 router.get('/pending', async (req, res) => {
     try {
         const recipes = await getPendingRecipes();
@@ -65,18 +65,64 @@ router.get('/pending', async (req, res) => {
     }
 });
 
-// Get all recipes by a specific user
+// Recipes created by user
+router.get('/user/:userId/created', async (req, res) => {
+    try {
+        const recipes = await getRecipesByUser(req.params.userId);
+        res.status(200).json(recipes);
+    } catch (error) {
+        console.error('Error fetching created recipes:', error);
+        res.status(500).json({ message: 'Error fetching created recipes' });
+    }
+});
+
+// Saved recipe references for user
+router.get('/user/:userId/saved', async (req, res) => {
+    try {
+        const recipes = await getSavedRecipesByUser(req.params.userId);
+        res.status(200).json(recipes);
+    } catch (error) {
+        console.error('Error fetching saved recipes:', error);
+        res.status(500).json({ message: 'Error fetching saved recipes' });
+    }
+});
+
+// Optional backwards-compatible route
 router.get('/user/:userId', async (req, res) => {
     try {
         const recipes = await getRecipesByUser(req.params.userId);
         res.status(200).json(recipes);
     } catch (error) {
-        console.error('Error fetching recipes by user:', error);
-        res.status(500).json({ message: 'Error fetching recipes by user' });
+        console.error('Error fetching created recipes:', error);
+        res.status(500).json({ message: 'Error fetching created recipes' });
     }
 });
 
-// Get all recipes with a specific tag
+router.post('/save/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const { recipeId, source } = req.body;
+
+    if (!userId?.trim()) {
+        return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!String(recipeId || '').trim()) {
+        return res.status(400).json({ message: 'Recipe ID is required' });
+    }
+
+    if (!['official', 'community'].includes(source)) {
+        return res.status(400).json({ message: 'Source must be official or community' });
+    }
+
+    try {
+        const savedRecipe = await saveRecipeForUser(userId, String(recipeId), source);
+        res.status(201).json(savedRecipe);
+    } catch (error) {
+        console.error('Error saving recipe:', error);
+        res.status(500).json({ message: 'Error saving recipe', error: error.message });
+    }
+});
+
 router.get('/tag/:tagId', async (req, res) => {
     try {
         const recipes = await getRecipesByTag(req.params.tagId);
@@ -87,7 +133,6 @@ router.get('/tag/:tagId', async (req, res) => {
     }
 });
 
-// Get a single recipe by ID
 router.get('/:recipeId', async (req, res) => {
     try {
         const recipe = await getRecipeById(req.params.recipeId);
@@ -99,7 +144,6 @@ router.get('/:recipeId', async (req, res) => {
     }
 });
 
-// Submit a new user recipe
 router.post('/', async (req, res) => {
     const { title, userId, creatorName } = req.body;
 
@@ -116,14 +160,15 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Cache an external (Spoonacular) recipe
 router.post('/external', async (req, res) => {
     const { recipeId } = req.body;
 
-    if (!recipeId?.trim()) return res.status(400).json({ message: 'Recipe ID is required' });
+    if (!String(recipeId || '').trim()) {
+        return res.status(400).json({ message: 'Recipe ID is required' });
+    }
 
     try {
-        const recipe = await saveExternalRecipe(recipeId, req.body);
+        const recipe = await saveExternalRecipe(String(recipeId), req.body);
         res.status(201).json(recipe);
     } catch (error) {
         console.error('Error saving external recipe:', error);
@@ -131,7 +176,6 @@ router.post('/external', async (req, res) => {
     }
 });
 
-// Approve a pending recipe (admin)
 router.patch('/:recipeId/approve', async (req, res) => {
     try {
         await approveRecipe(req.params.recipeId);
@@ -142,7 +186,6 @@ router.patch('/:recipeId/approve', async (req, res) => {
     }
 });
 
-// Update recipe rating (called internally after a new comment)
 router.patch('/:recipeId/rating', async (req, res) => {
     const { averageRating, ratingCount } = req.body;
 
@@ -159,7 +202,6 @@ router.patch('/:recipeId/rating', async (req, res) => {
     }
 });
 
-// Update recipe fields
 router.patch('/:recipeId', async (req, res) => {
     try {
         await updateRecipe(req.params.recipeId, req.body);
@@ -170,7 +212,6 @@ router.patch('/:recipeId', async (req, res) => {
     }
 });
 
-// Delete a recipe
 router.delete('/:recipeId', async (req, res) => {
     try {
         await deleteRecipe(req.params.recipeId);
