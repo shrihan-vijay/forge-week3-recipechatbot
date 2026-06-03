@@ -65,6 +65,11 @@
   max-width: 1320px;
 }
 
+.recipe-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .recipe-card {
   background-color: #b7cede;
   border-radius: 6px;

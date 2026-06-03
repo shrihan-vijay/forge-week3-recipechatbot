@@ -118,6 +118,16 @@ const deleteRecipe = async (recipeId) => {
     await deleteDoc(doc(db, "recipes", recipeId));
 };
 
+// Search approved recipes by title (case-insensitive, in-memory filter)
+const searchApprovedRecipes = async (searchTerm) => {
+    const q = query(collection(db, "recipes"), where("status", "==", "approved"));
+    const snapshot = await getDocs(q);
+    const term = searchTerm.toLowerCase();
+    return snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((r) => r.title && r.title.toLowerCase().includes(term));
+};
+
 module.exports = {
     createRecipe,
     saveExternalRecipe,
@@ -127,6 +137,7 @@ module.exports = {
     getPendingRecipes,
     getRecipesByUser,
     getRecipesByTag,
+    searchApprovedRecipes,
     updateRecipe,
     approveRecipe,
     updateRecipeRating,

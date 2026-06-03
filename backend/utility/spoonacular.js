@@ -83,12 +83,17 @@ router.get('/search', async (req, res) => {
             id: String(recipe.id),
             isExternal: true,
             ...mapSpoonacularToSchema(recipe),
-            rawTags: [ // Temporary tag presentation strings just for search results UI
+            rawTags: [
                 ...(recipe.cuisines || []),
                 ...(recipe.diets || []),
                 ...(recipe.dishTypes || [])
             ]
         }));
+
+        // Cache each recipe in the database
+        await Promise.all(
+            mappedRecipes.map(recipe => saveExternalRecipe(recipe.id, recipe))
+        );
 
         res.status(200).json(mappedRecipes);
     } catch (error) {
@@ -118,6 +123,11 @@ router.get('/random', async (req, res) => {
                 ...(recipe.dishTypes || [])
             ]
         }));
+
+        // Upsert each recipe into Firestore
+        await Promise.all(
+            mappedRecipes.map(recipe => saveExternalRecipe(recipe.id, recipe))
+        );
 
         res.status(200).json(mappedRecipes);
     } catch (error) {

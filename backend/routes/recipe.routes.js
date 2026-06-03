@@ -8,6 +8,7 @@ const {
     getPendingRecipes,
     getRecipesByUser,
     getRecipesByTag,
+    searchApprovedRecipes,
     updateRecipe,
     approveRecipe,
     updateRecipeRating,
@@ -15,6 +16,21 @@ const {
 } = require('../db/recipe.db.js');
 
 const router = express.Router();
+
+// Search approved recipes by title
+router.get('/search', async (req, res) => {
+    const { query } = req.query;
+    if (!query?.trim()) {
+        return res.status(400).json({ message: 'Search query is required' });
+    }
+    try {
+        const recipes = await searchApprovedRecipes(query.trim());
+        res.status(200).json(recipes);
+    } catch (error) {
+        console.error('Error searching recipes:', error);
+        res.status(500).json({ message: 'Error searching recipes' });
+    }
+});
 
 // Get all approved recipes (public feed)
 router.get('/', async (req, res) => {
