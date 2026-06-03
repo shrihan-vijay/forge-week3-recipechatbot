@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
 import { useUser } from "../context/UserContext";
 import Chatbot from '../components/Chatbot.jsx';
@@ -35,6 +35,8 @@ function StarRating({ rating, interactive = false, onRate }) {
 
 export default function RecipeDetails() {
   const { recipeId } = useParams();
+  const [searchParams] = useSearchParams();
+  const source = searchParams.get("source") || "community";
   const { fetchRecipeById } = useRecipes();
   const { user } = useUser();
   const [recipe, setRecipe] = useState(null);
@@ -66,48 +68,54 @@ export default function RecipeDetails() {
   };
 
   useEffect(() => {
-    async function loadRecipe() {
-      try {
-        const [recipeData, commentsRes] = await Promise.all([
-          fetchRecipeById(recipeId),
-          fetch(`${API_URL}/recipe/${recipeId}/comment`).then((res) =>
-            res.ok ? res.json() : []
-          ),
-        ]);
+  async function loadRecipe() {
+    try {
+      setLoading(true);
 
-        if (!recipeData) throw new Error("Recipe not found");
-        const commentsList = Array.isArray(commentsRes) ? commentsRes : [];
+      const recipePromise =
+        source === "official"
+          ? fetch(`${API_URL}/api/spoonacular/${recipeId}`).then((res) =>
+              res.ok ? res.json() : null
+            )
+          : fetchRecipeById(recipeId);
 
-        // Recalculate rating from actual comments
-        const ratingCount = commentsList.filter((c) => c.rating).length;
-        const averageRating =
-          ratingCount > 0
-            ? commentsList.reduce((sum, c) => sum + (c.rating || 0), 0) / ratingCount
-            : 0;
+      const [recipeData, commentsRes] = await Promise.all([
+        recipePromise,
+        fetch(`${API_URL}/recipe/${recipeId}/comment`).then((res) =>
+          res.ok ? res.json() : []
+        ),
+      ]);
 
-        // Sync backend if rating is stale
-        if (
-          recipeData.averageRating !== averageRating ||
-          recipeData.ratingCount !== ratingCount
-        ) {
-          fetch(`${API_URL}/recipe/${recipeId}/rating`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ averageRating, ratingCount }),
-          });
-        }
+      if (!recipeData) throw new Error("Recipe not found");
 
-        setRecipe({ ...recipeData, averageRating, ratingCount });
-        setComments(commentsList);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+      const normalizedRecipe =
+        source === "official"
+          ? {
+              ...recipeData,
+              imageUrl: recipeData.image,
+              description: recipeData.summary?.replace(/<[^>]*>/g, ""),
+              ingredients:
+                recipeData.extendedIngredients?.map(
+                  (item) => item.original || item.name
+                ) || [],
+              instructions:
+                recipeData.analyzedInstructions?.[0]?.steps?.map(
+                  (step) => step.step
+                ) || [],
+            }
+          : recipeData;
+
+      setRecipe(normalizedRecipe);
+      setComments(Array.isArray(commentsRes) ? commentsRes : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    loadRecipe();
-  }, [recipeId, fetchRecipeById]);
+  loadRecipe();
+}, [recipeId, source, fetchRecipeById]);
 
   if (loading) {
     return (
