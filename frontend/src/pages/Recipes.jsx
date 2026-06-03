@@ -22,43 +22,17 @@ function Recipes() {
 
   useEffect(() => {
   async function fetchOfficialRecipes() {
-    const isSearching = searchTerm.trim();
-
-    if (!isSearching) {
-      const cachedRecipes = sessionStorage.getItem("officialRecipes");
-
-      if (cachedRecipes) {
-        setOfficialRecipes(JSON.parse(cachedRecipes));
-        return;
-      }
-    }
-
     try {
       setOfficialLoading(true);
 
-      const endpoint = isSearching
-        ? `${API_URL}/api/spoonacular/search?query=${encodeURIComponent(
-            searchTerm.trim()
-          )}&number=12`
-        : `${API_URL}/api/spoonacular/random?number=12`;
-
-      const response = await fetch(endpoint);
+      const response = await fetch(`${API_URL}/recipe/official`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch official recipes");
       }
 
       const data = await response.json();
-      const recipes = Array.isArray(data) ? data : data.results || [];
-
-      setOfficialRecipes(recipes);
-
-      if (!isSearching) {
-        sessionStorage.setItem(
-          "officialRecipes",
-          JSON.stringify(recipes)
-        );
-      }
+      setOfficialRecipes(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch official recipes:", error);
       setOfficialRecipes([]);
@@ -70,7 +44,7 @@ function Recipes() {
   if (activeTab === "official") {
     fetchOfficialRecipes();
   }
-}, [activeTab, searchTerm]);
+}, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== "community") return;
@@ -134,7 +108,11 @@ function Recipes() {
   }
 
   const recipes =
-    activeTab === "official" ? officialRecipes : communityRecipes;
+  activeTab === "official"
+    ? officialRecipes.filter((recipe) =>
+        recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : communityRecipes;
 
   const loading =
     activeTab === "official" ? officialLoading : communityLoading;
@@ -182,7 +160,7 @@ function Recipes() {
 
             return (
               <Link
-                to={`/recipes/${recipeId}?source=${activeTab}`}
+                to={`/recipes/${recipeId}`}
                 key={`${activeTab}-${recipeId}`}
                 className="recipe-card-link"
               >
