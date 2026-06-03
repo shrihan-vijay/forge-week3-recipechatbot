@@ -170,6 +170,8 @@ export default function CreateRecipes() {
             />
           </label>
 
+          <p className="image-or-divider">OR</p>
+
           <label className="field">
             Image URL
             <input
