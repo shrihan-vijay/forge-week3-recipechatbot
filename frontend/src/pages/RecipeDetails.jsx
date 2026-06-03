@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
+import { useUser } from "../context/UserContext";
 import Chatbot from '../components/Chatbot.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -35,10 +36,34 @@ function StarRating({ rating, interactive = false, onRate }) {
 export default function RecipeDetails() {
   const { recipeId } = useParams();
   const { fetchRecipeById } = useRecipes();
+  const { user } = useUser();
   const [recipe, setRecipe] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [editRating, setEditRating] = useState(0);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const recalcAndSyncRating = (updatedComments) => {
+    const rated = updatedComments.filter((c) => c.rating);
+    const ratingCount = rated.length;
+    const averageRating =
+      ratingCount > 0
+        ? updatedComments.reduce((sum, c) => sum + (c.rating || 0), 0) / ratingCount
+        : 0;
+    setRecipe((prev) => ({ ...prev, averageRating, ratingCount }));
+    fetch(`${API_URL}/recipe/${recipeId}/rating`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ averageRating, ratingCount }),
+    });
+  };
 
   useEffect(() => {
     async function loadRecipe() {
@@ -51,8 +76,29 @@ export default function RecipeDetails() {
         ]);
 
         if (!recipeData) throw new Error("Recipe not found");
-        setRecipe(recipeData);
-        setComments(Array.isArray(commentsRes) ? commentsRes : []);
+        const commentsList = Array.isArray(commentsRes) ? commentsRes : [];
+
+        // Recalculate rating from actual comments
+        const ratingCount = commentsList.filter((c) => c.rating).length;
+        const averageRating =
+          ratingCount > 0
+            ? commentsList.reduce((sum, c) => sum + (c.rating || 0), 0) / ratingCount
+            : 0;
+
+        // Sync backend if rating is stale
+        if (
+          recipeData.averageRating !== averageRating ||
+          recipeData.ratingCount !== ratingCount
+        ) {
+          fetch(`${API_URL}/recipe/${recipeId}/rating`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ averageRating, ratingCount }),
+          });
+        }
+
+        setRecipe({ ...recipeData, averageRating, ratingCount });
+        setComments(commentsList);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -195,13 +241,130 @@ export default function RecipeDetails() {
       </div>
 
       {/* Reviews section */}
-      {comments.length > 0 && (
-        <div className="border-t border-[#e8e0cc] pt-8">
-          <h2 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-5">
-            Reviews
-          </h2>
+      <div className="border-t border-[#e8e0cc] pt-8">
+        <h2 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-5">
+          Reviews
+        </h2>
+
+        {/* Submit review form */}
+        {user && comments.some((c) => c.userId === (user.id || user.uid)) ? (
+        <p className="text-sm text-[#3a2e1e]/50 mb-6">
+          You have already reviewed this recipe.
+        </p>
+        ) : user ? (
+        <div className="bg-[#FDFAF2] border border-[#e8e0cc] rounded-xl p-5 mb-6">
+          <h3 className="text-sm font-semibold text-[#3a2e1e] mb-3">
+            Leave a review
+          </h3>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!reviewRating) {
+                setSubmitError("Please select a rating.");
+                return;
+              }
+              setSubmitting(true);
+              setSubmitError(null);
+              try {
+                const res = await fetch(
+                  `${API_URL}/recipe/${recipeId}/comment`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      userId: user.id || user.uid,
+                      username: user.username || user.displayName || user.name,
+                      rating: reviewRating,
+                      text: reviewText.trim(),
+                    }),
+                  }
+                );
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  throw new Error(data.message || "Failed to submit review");
+                }
+                const newComment = await res.json();
+                setComments((prev) => [...prev, newComment]);
+
+                // Update displayed rating
+                const newCount = (recipe.ratingCount || 0) + 1;
+                const newAvg =
+                  ((recipe.averageRating || 0) * (recipe.ratingCount || 0) +
+                    reviewRating) /
+                  newCount;
+                setRecipe((prev) => ({
+                  ...prev,
+                  averageRating: newAvg,
+                  ratingCount: newCount,
+                }));
+
+                // Update backend rating
+                fetch(`${API_URL}/recipe/${recipeId}/rating`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    averageRating: newAvg,
+                    ratingCount: newCount,
+                  }),
+                });
+
+                setReviewRating(0);
+                setReviewText("");
+              } catch (err) {
+                setSubmitError(err.message);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            className="space-y-3"
+          >
+            <div>
+              <label className="block text-xs text-[#3a2e1e]/60 mb-1">
+                Rating
+              </label>
+              <StarRating
+                rating={reviewRating}
+                interactive
+                onRate={setReviewRating}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[#3a2e1e]/60 mb-1">
+                Comment
+              </label>
+              <textarea
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                required
+                rows={3}
+                className="w-full border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a] resize-none"
+                placeholder="Write your review..."
+              />
+            </div>
+            {submitError && (
+              <p className="text-xs text-red-600">{submitError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-[#c4a96a] text-white text-sm font-medium rounded-lg hover:bg-[#b09858] disabled:opacity-50 transition-colors"
+            >
+              {submitting ? "Submitting..." : "Submit Review"}
+            </button>
+          </form>
+        </div>
+        ) : (
+        <p className="text-sm text-[#3a2e1e]/50 mb-6">
+          Log in to leave a review.
+        </p>
+        )}
+
+        {comments.length > 0 && (
           <div className="space-y-5">
-            {comments.map((comment) => (
+            {comments.map((comment) => {
+              const isOwner = user && comment.userId === (user.id || user.uid);
+              const isEditing = editingId === comment.id;
+              return (
               <div
                 key={comment.id}
                 className="bg-[#FDFAF2] border border-[#e8e0cc] rounded-xl p-4"
@@ -210,13 +373,117 @@ export default function RecipeDetails() {
                   <span className="text-sm font-medium text-[#3a2e1e]">
                     {comment.username}
                   </span>
-                  <StarRating rating={comment.rating || 0} />
+                  {isEditing ? (
+                    <StarRating rating={editRating} interactive onRate={setEditRating} />
+                  ) : (
+                    <StarRating rating={comment.rating || 0} />
+                  )}
                 </div>
-                <p className="text-sm text-[#3a2e1e]/75 leading-relaxed">
-                  {comment.text}
-                </p>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      rows={3}
+                      className="w-full border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a] resize-none"
+                    />
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        className="border-2 rounded-xs p-2 text-sm"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="border-2 rounded-xs p-2 text-sm bg-[#c4a96a] text-white"
+                        onClick={async () => {
+                          await fetch(
+                            `${API_URL}/recipe/${recipeId}/comment/${comment.id}`,
+                            {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ text: editText.trim(), rating: editRating }),
+                            }
+                          );
+                          const updated = comments.map((c) =>
+                            c.id === comment.id ? { ...c, text: editText.trim(), rating: editRating } : c
+                          );
+                          setComments(updated);
+                          recalcAndSyncRating(updated);
+                          setEditingId(null);
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-[#3a2e1e]/75 leading-relaxed">
+                      {comment.text}
+                    </p>
+                    {isOwner && (
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          className="border-2 rounded-xs p-2"
+                          onClick={() => {
+                            setEditingId(comment.id);
+                            setEditText(comment.text);
+                            setEditRating(comment.rating || 0);
+                          }}
+                        >
+                          EDIT
+                        </button>
+                        <button
+                          className="border-2 rounded-xs p-2 text-red-500"
+                          onClick={() => setDeletingId(comment.id)}
+                        >
+                          DELETE
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            ))}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirmation modal */}
+      {deletingId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg">
+            <h3 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-2">
+              Delete Review
+            </h3>
+            <p className="text-sm text-[#3a2e1e]/70 mb-5">
+              Are you sure you want to delete this review? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 text-sm border border-[#e8e0cc] rounded-lg hover:bg-[#f5f0e4] transition-colors"
+                onClick={() => setDeletingId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                onClick={async () => {
+                  await fetch(
+                    `${API_URL}/recipe/${recipeId}/comment/${deletingId}`,
+                    { method: "DELETE" }
+                  );
+                  const updated = comments.filter((c) => c.id !== deletingId);
+                  setComments(updated);
+                  recalcAndSyncRating(updated);
+                  setDeletingId(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
