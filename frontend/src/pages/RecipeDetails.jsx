@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useRecipes } from "../context/RecipeContext";
 
-const API_URL = "http://localhost:5001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 function StarRating({ rating, interactive = false, onRate }) {
   const [hovered, setHovered] = useState(0);
@@ -32,29 +33,34 @@ function StarRating({ rating, interactive = false, onRate }) {
 
 export default function RecipeDetails() {
   const { recipeId } = useParams();
+  const { fetchRecipeById } = useRecipes();
   const [recipe, setRecipe] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch(`${API_URL}/recipe/${recipeId}`).then((res) => {
-        if (!res.ok) throw new Error("Recipe not found");
-        return res.json();
-      }),
-      fetch(`${API_URL}/recipe/${recipeId}/comment`).then((res) => {
-        if (!res.ok) return [];
-        return res.json();
-      }),
-    ])
-      .then(([recipeData, commentsData]) => {
+    async function loadRecipe() {
+      try {
+        const [recipeData, commentsRes] = await Promise.all([
+          fetchRecipeById(recipeId),
+          fetch(`${API_URL}/recipe/${recipeId}/comment`).then((res) =>
+            res.ok ? res.json() : []
+          ),
+        ]);
+
+        if (!recipeData) throw new Error("Recipe not found");
         setRecipe(recipeData);
-        setComments(Array.isArray(commentsData) ? commentsData : []);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [recipeId]);
+        setComments(Array.isArray(commentsRes) ? commentsRes : []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadRecipe();
+  }, [recipeId, fetchRecipeById]);
 
   if (loading) {
     return (
