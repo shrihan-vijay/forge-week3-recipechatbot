@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -160,34 +161,36 @@ function Recipes() {
             const isSaved = savedRecipeIds.includes(recipeId);
 
             return (
-              <article className="recipe-card" key={recipeId}>
-                <img
-                  src={recipe.imageUrl || recipe.image || "/placeholder-image.png"}
-                  alt={recipe.title || "Recipe"}
-                  className="recipe-image"
-                />
+              <Link to={`/recipes/${recipeId}`} key={recipeId} className="recipe-card-link">
+                <article className="recipe-card">
+                  <img
+                    src={recipe.imageUrl || recipe.image || "/placeholder-image.png"}
+                    alt={recipe.title || "Recipe"}
+                    className="recipe-image"
+                  />
 
-                <h3>{recipe.title || "Recipe Name"}</h3>
+                  <h3>{recipe.title || "Recipe Name"}</h3>
 
-                <p>
-                  {recipe.description ||
-                    cleanSummary?.slice(0, 90) ||
-                    (recipe.readyInMinutes
-                      ? `${recipe.readyInMinutes} mins`
-                      : "Description")}
-                </p>
+                  <p>
+                    {recipe.description ||
+                      cleanSummary?.slice(0, 90) ||
+                      (recipe.readyInMinutes
+                        ? `${recipe.readyInMinutes} mins`
+                        : "Description")}
+                  </p>
 
-                {activeTab === "official" && (
-                  <button
-                    className={`save-button ${isSaved ? "saved" : ""}`}
-                    onClick={() => handleSave(recipe)}
-                    aria-label="Save recipe"
-                    disabled={isSaved}
-                  >
-                    {isSaved ? "★" : "☆"}
-                  </button>
-                )}
-              </article>
+                  {activeTab === "official" && (
+                    <button
+                      className={`save-button ${isSaved ? "saved" : ""}`}
+                      onClick={(e) => { e.preventDefault(); handleSave(recipe); }}
+                      aria-label="Save recipe"
+                      disabled={isSaved}
+                    >
+                      {isSaved ? "★" : "☆"}
+                    </button>
+                  )}
+                </article>
+              </Link>
             );
           })}
         </section>

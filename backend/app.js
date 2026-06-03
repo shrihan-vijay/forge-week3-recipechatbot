@@ -19,7 +19,7 @@ app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/recipe", recipeRoutes);
 app.use("/tag", tagRoutes);
-app.use("/comment", commentRoutes);
+app.use("/recipe/:recipeId/comment", commentRoutes);
 app.use("/api/spoonacular", spoonacular);
 
 app.get("/", (req, res) => {
