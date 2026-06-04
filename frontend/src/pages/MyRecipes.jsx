@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext.jsx";
 import "../styles/MyRecipes.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
+
 function MyRecipes() {
+  const { user } = useUser();
+  const userId = user?.uid || user?.id;
+
   const [activeTab, setActiveTab] = useState("saved");
   const [savedRecipes, setSavedRecipes] = useState([]);
   const [createdRecipes, setCreatedRecipes] = useState([]);
@@ -11,36 +17,78 @@ function MyRecipes() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!userId) return;
+
     fetchSavedRecipes();
     fetchCreatedRecipes();
-  }, []);
+  }, [userId]);
 
   async function fetchSavedRecipes() {
-    const res = await fetch("http://localhost:5001/api/my-recipes/saved");
-    const data = await res.json();
-    setSavedRecipes(data);
+    try {
+      const res = await fetch(`${API_URL}/myrecipes/saved/${userId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to fetch saved recipes");
+      }
+
+      setSavedRecipes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching saved recipes:", error);
+      setSavedRecipes([]);
+    }
   }
 
   async function fetchCreatedRecipes() {
-    const res = await fetch("http://localhost:5001/api/my-recipes/created");
-    const data = await res.json();
-    setCreatedRecipes(data);
+    try {
+      const res = await fetch(`${API_URL}/myrecipes/created/${userId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to fetch created recipes");
+      }
+
+      setCreatedRecipes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching created recipes:", error);
+      setCreatedRecipes([]);
+    }
   }
 
-  async function handleRemoveSaved(id) {
-    await fetch(`http://localhost:5001/api/my-recipes/saved/${id}`, {
-      method: "DELETE",
-    });
+  async function handleRemoveSaved(savedId) {
+    try {
+      const res = await fetch(`${API_URL}/myrecipes/saved/${savedId}`, {
+        method: "DELETE",
+      });
 
-    setSavedRecipes(savedRecipes.filter((recipe) => recipe.id !== id));
+      if (!res.ok) {
+        throw new Error("Failed to remove saved recipe");
+      }
+
+      setSavedRecipes((prev) =>
+        prev.filter((recipe) => recipe.savedId !== savedId)
+      );
+    } catch (error) {
+      console.error("Error removing saved recipe:", error);
+    }
   }
 
-  async function handleDeleteCreated(id) {
-    await fetch(`http://localhost:5001/api/recipes/${id}`, {
-      method: "DELETE",
-    });
+  async function handleDeleteCreated(recipeId) {
+    try {
+      const res = await fetch(`${API_URL}/myrecipes/created/${recipeId}`, {
+        method: "DELETE",
+      });
 
-    setCreatedRecipes(createdRecipes.filter((recipe) => recipe.id !== id));
+      if (!res.ok) {
+        throw new Error("Failed to delete created recipe");
+      }
+
+      setCreatedRecipes((prev) =>
+        prev.filter((recipe) => recipe.id !== recipeId)
+      );
+    } catch (error) {
+      console.error("Error deleting created recipe:", error);
+    }
   }
 
   const recipes = activeTab === "saved" ? savedRecipes : createdRecipes;
@@ -57,7 +105,6 @@ function MyRecipes() {
 
       <div className="my-recipes-controls">
         <div className="search-wrapper">
-
           <input
             type="text"
             placeholder="Search for a recipe"
@@ -65,7 +112,7 @@ function MyRecipes() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-           <span>⌕</span>
+          <span>⌕</span>
         </div>
 
         <button
@@ -92,56 +139,60 @@ function MyRecipes() {
         </button>
       </div>
 
-      <section className="my-recipes-grid">
-        {filteredRecipes.map((recipe) => (
-          <article className="recipe-card" key={recipe.id}>
-            <Link
-              to={`/recipes/${recipe.id}`}
-              className="recipe-card-link"
-            >
-              <img
-                src={recipe.image || "/placeholder-recipe.png"}
-                alt={recipe.title}
-              />
+      {!userId && <p>Please log in to view your recipes.</p>}
 
-              <h2>{recipe.title}</h2>
+      {userId && filteredRecipes.length === 0 && (
+        <p>No {activeTab} recipes found.</p>
+      )}
 
-              <p>
-                {recipe.description || "No description added yet."}
-              </p>
-            </Link>
+      {userId && filteredRecipes.length > 0 && (
+        <section className="my-recipes-grid">
+          {filteredRecipes.map((recipe) => {
+            const recipeId = String(recipe.id || recipe.recipeId);
+            const imageUrl =
+              recipe.imageUrl || recipe.image || "/placeholder-recipe.png";
 
-            {activeTab === "saved" ? (
-              <div className="recipe-actions">
-                <button
-                  className="remove-btn"
-                  onClick={() => handleRemoveSaved(recipe.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <div className="recipe-actions">
-                <button
-                  className="edit-btn"
-                  onClick={() =>
-                    navigate(`/recipes/${recipe.id}/edit`)
-                  }
-                >
-                  Edit
-                </button>
+            return (
+              <article className="recipe-card" key={`${activeTab}-${recipeId}`}>
+                <Link to={`/recipes/${recipeId}`} className="recipe-card-link">
+                  <img src={imageUrl} alt={recipe.title || "Recipe"} />
 
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDeleteCreated(recipe.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            )}
-          </article>
-        ))}
-      </section>
+                  <h2>{recipe.title || "Recipe Name"}</h2>
+
+                  <p>{recipe.description || "No description added yet."}</p>
+                </Link>
+
+                {activeTab === "saved" ? (
+                  <div className="recipe-actions">
+                    <button
+                      className="remove-btn"
+                      onClick={() => handleRemoveSaved(recipe.savedId)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="recipe-actions">
+                    <button
+                      className="edit-btn"
+                      onClick={() => navigate(`/recipes/${recipeId}/edit`)}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleDeleteCreated(recipeId)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </section>
+      )}
     </main>
   );
 }
