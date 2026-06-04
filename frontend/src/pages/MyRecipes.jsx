@@ -56,24 +56,36 @@ function MyRecipes() {
   }
 
   async function handleRemoveSaved(savedId) {
-    try {
-      const res = await fetch(`${API_URL}/myrecipes/saved/${savedId}`, {
-        method: "DELETE",
-      });
+  const confirmed = window.confirm(
+    "Remove this recipe from your saved recipes?"
+  );
 
-      if (!res.ok) {
-        throw new Error("Failed to remove saved recipe");
-      }
+  if (!confirmed) return;
 
-      setSavedRecipes((prev) =>
-        prev.filter((recipe) => recipe.savedId !== savedId)
-      );
-    } catch (error) {
-      console.error("Error removing saved recipe:", error);
+  try {
+    const res = await fetch(`${API_URL}/myrecipes/saved/${savedId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to remove saved recipe");
     }
+
+    setSavedRecipes((prev) =>
+      prev.filter((recipe) => recipe.savedId !== savedId)
+    );
+  } catch (error) {
+    console.error("Error removing saved recipe:", error);
   }
+}
 
   async function handleDeleteCreated(recipeId) {
+    const confirmed = window.confirm(
+      "Delete this recipe? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
     try {
       const res = await fetch(`${API_URL}/myrecipes/created/${recipeId}`, {
         method: "DELETE",
@@ -168,7 +180,7 @@ function MyRecipes() {
                       className="remove-btn"
                       onClick={() => handleRemoveSaved(recipe.savedId)}
                     >
-                      Remove
+                      ✕
                     </button>
                   </div>
                 ) : (
