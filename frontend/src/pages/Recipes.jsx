@@ -71,12 +71,16 @@ function Recipes() {
     }
   }, [activeTab, searchTerm, selectedTag, fetchRecipes, searchRecipes, fetchRecipesByTag]);
 
-  // Always fetch tags on mount for rendering tag pill names globally
   useEffect(() => {
     fetchTags();
   }, [fetchTags]);
 
-  // Fetch user's saved recipes list
+  useEffect(() => {
+    if (activeTab === "community" && searchTerm === "") {
+      fetchRecipes();
+    }
+  }, [searchTerm, activeTab, fetchRecipes]);
+
   useEffect(() => {
     async function fetchSavedRecipes() {
       if (!userId) return;
