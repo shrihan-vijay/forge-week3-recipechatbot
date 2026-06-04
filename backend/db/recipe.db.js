@@ -99,10 +99,24 @@ const getSavedRecipesByUser = async (userId) => {
 
 // Get a single community recipe by Firestore document ID
 const getRecipeById = async (recipeId) => {
-    const recipeDoc = await getDoc(doc(db, "recipes", String(recipeId)));
-    return recipeDoc.exists() ? { id: recipeDoc.id, ...recipeDoc.data() } : null;
-};
+    const cleanRecipeId = String(recipeId);
 
+    const recipeDoc = await getDoc(doc(db, "recipes", cleanRecipeId));
+
+    if (recipeDoc.exists()) {
+        return { id: recipeDoc.id, ...recipeDoc.data() };
+    }
+
+    const externalRecipeDoc = await getDoc(
+        doc(db, "externalRecipes", cleanRecipeId)
+    );
+
+    if (externalRecipeDoc.exists()) {
+        return { id: externalRecipeDoc.id, ...externalRecipeDoc.data() };
+    }
+
+    return null;
+};
 // Get all recipes, admin use
 const getAllRecipes = async () => {
     const snapshot = await getDocs(collection(db, "recipes"));
