@@ -27,7 +27,6 @@ function Recipes() {
   const [officialLoading, setOfficialLoading] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState([]);
 
-  // Fetch official recipes if activeTab changes to official
   useEffect(() => {
     async function fetchOfficialRecipes() {
       try {
@@ -53,7 +52,6 @@ function Recipes() {
     }
   }, [activeTab]);
 
-  // Handle Community Tab Search & Tag Filtering
   useEffect(() => {
     if (activeTab !== "community") return;
 
@@ -169,12 +167,19 @@ function Recipes() {
   }
 
   // Derive client-side filtered view for official recipes vs raw data for community
+  const officialFilteredRecipes = officialRecipes.filter((recipe) => {
+    const matchesSearch = recipe.title
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    const matchesTag =
+      !selectedTag || recipe.tags?.includes(selectedTag);
+
+    return matchesSearch && matchesTag;
+  });
+
   const recipes =
-    activeTab === "official"
-      ? officialRecipes.filter((recipe) =>
-          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : communityRecipes;
+    activeTab === "official" ? officialFilteredRecipes : communityRecipes;
 
   const loading = activeTab === "official" ? officialLoading : communityLoading;
 

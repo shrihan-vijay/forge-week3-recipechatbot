@@ -11,6 +11,14 @@
   font-weight: 700;
 }
 
+.recipes-search,
+.tag-filter-select,
+.tag-filter-button,
+.tag-clear-button,
+.recipe-tag-pill {
+  border-radius: 999px;
+}
+
 .recipes-search {
   width: 300px;
   height: 38px;
@@ -19,7 +27,6 @@
   align-items: center;
   background: white;
   border: 1px solid #ddd8d0;
-  border-radius: 999px;
   padding: 0 14px;
 }
 
@@ -37,9 +44,10 @@
 
 .tag-filter-row {
   display: flex;
-  gap: 12px;
   align-items: center;
-  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 26px;
 }
 
 .tag-filter-label {
@@ -50,7 +58,6 @@
 .tag-filter-select {
   min-width: 200px;
   padding: 9px 40px 9px 16px; 
-  border-radius: 999px;
   border: 1px solid #ddd8d0; 
   background-color: #fff;
   color: #333;
@@ -73,7 +80,6 @@
   outline: none;
   border-color: #ddd8d0; 
 }
-
 
 .recipes-toggle {
   display: flex;
@@ -141,14 +147,6 @@
   color: #666;
 }
 
-.tag-filter-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 26px;
-}
-
 .tag-filter-list {
   display: flex;
   flex-wrap: wrap;
@@ -159,7 +157,6 @@
 .tag-clear-button {
   padding: 8px 14px;
   border: none;
-  border-radius: 999px;
   cursor: pointer;
   font-size: 14px;
   background-color: #ebebeb;
@@ -181,7 +178,6 @@
 .recipe-tag-pill {
   background-color: rgba(255, 255, 255, 0.85);
   color: #333;
-  border-radius: 999px;
   padding: 5px 10px;
   font-size: 13px;
 }
