@@ -7,6 +7,7 @@ const RecipeContext = createContext();
 export function RecipeProvider({ children }) {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [tags, setTags] = useState([]);
 
   // Fetch all approved recipes from Firestore (default view, no API call)
   const fetchRecipes = useCallback(async () => {
@@ -19,6 +20,33 @@ export function RecipeProvider({ children }) {
       setRecipes(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch recipes:", error);
+      setRecipes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchTags = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/tag`);
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      const data = await response.json();
+      setTags(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch tags:", error);
+      setTags([]);
+    }
+  }, []);
+
+  const fetchRecipesByTag = useCallback(async (tagId) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/recipe/tag/${tagId}`);
+      if (!response.ok) throw new Error("Failed to fetch recipes by tag");
+      const data = await response.json();
+      setRecipes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch recipes by tag:", error);
       setRecipes([]);
     } finally {
       setLoading(false);
@@ -71,7 +99,7 @@ export function RecipeProvider({ children }) {
 
   return (
     <RecipeContext.Provider
-      value={{ recipes, loading, fetchRecipes, searchRecipes, fetchRecipeById }}
+      value={{ recipes, loading, tags, fetchRecipes, fetchTags, fetchRecipesByTag, searchRecipes, fetchRecipeById }}
     >
       {children}
     </RecipeContext.Provider>

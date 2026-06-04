@@ -12,6 +12,7 @@ const {
     Timestamp,
 } = require("firebase/firestore");
 const db = require("../firebase.js");
+const { createTagWithId, getTagByName } = require("./tags.db.js");
 
 // Create a new user-submitted recipe
 const createRecipe = async (recipeData) => {
@@ -41,6 +42,31 @@ const createRecipe = async (recipeData) => {
 const saveExternalRecipe = async (recipeId, recipeData = {}) => {
     const recipeRef = doc(db, "recipes", String(recipeId));
     const existing = await getDoc(recipeRef);
+    // If caller provided rawTags (from Spoonacular), convert them to Firestore tag IDs
+    let tagsToSave = recipeData.tags || [];
+    const rawTags = recipeData.rawTags || [];
+
+    if ((!tagsToSave || tagsToSave.length === 0) && rawTags && rawTags.length > 0) {
+        const normalized = Array.from(new Set(rawTags.map(t => (t || '').trim().toLowerCase()).filter(Boolean)));
+        const resolvedTagIds = [];
+
+        for (const name of normalized) {
+            try {
+                const existingTag = await getTagByName(name);
+                if (existingTag) {
+                    resolvedTagIds.push(existingTag.id);
+                } else {
+                    const customTagId = `tag_${name.replace(/\s+/g, '_')}`;
+                    const newTag = await createTagWithId(customTagId, name);
+                    resolvedTagIds.push(newTag.id || newTag.tagId || customTagId);
+                }
+            } catch (err) {
+                console.error(`Failed to resolve tag "${name}":`, err);
+            }
+        }
+
+        if (resolvedTagIds.length > 0) tagsToSave = resolvedTagIds;
+    }
 
     if (!existing.exists()) {
         await setDoc(recipeRef, {
@@ -50,8 +76,19 @@ const saveExternalRecipe = async (recipeId, recipeData = {}) => {
             createdAt: Timestamp.now(),
             averageRating: 0,
             ratingCount: 0,
+            tags: tagsToSave,
             ...recipeData,
         });
+    } else {
+        try {
+            const existingData = existing.data() || {};
+            const existingTags = existingData.tags || [];
+            if ((!existingTags || existingTags.length === 0) && tagsToSave && tagsToSave.length > 0) {
+                await updateDoc(recipeRef, { tags: tagsToSave });
+            }
+        } catch (err) {
+            console.error(`Failed to update existing recipe ${recipeId} with tags:`, err);
+        }
     }
 
     return {

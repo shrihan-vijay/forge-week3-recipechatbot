@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
 import { useUser } from "../context/UserContext";
+import "../styles/Recipes.css";
 import Chatbot from '../components/Chatbot.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -35,7 +36,7 @@ function StarRating({ rating, interactive = false, onRate }) {
 
 export default function RecipeDetails() {
   const { recipeId } = useParams();
-  const { fetchRecipeById } = useRecipes();
+  const { fetchRecipeById, tags, fetchTags } = useRecipes();
   const { user } = useUser();
   const [recipe, setRecipe] = useState(null);
   const [comments, setComments] = useState([]);
@@ -49,6 +50,36 @@ export default function RecipeDetails() {
   const [editText, setEditText] = useState("");
   const [editRating, setEditRating] = useState(0);
   const [deletingId, setDeletingId] = useState(null);
+
+  function getRecipeTagNames(recipe) {
+    let names = [];
+
+    if (recipe.tags?.length > 0) {
+      names = recipe.tags
+        .map((tag) => {
+          if (typeof tag === "string") {
+            const matched = tags.find((t) => t.id === tag);
+            return matched ? matched.name : tag;
+          }
+          return null;
+        })
+        .filter(Boolean);
+    }
+
+    if (names.length === 0 && recipe.rawTags?.length > 0) {
+      names = Array.from(
+        new Set(
+          recipe.rawTags.map((tag) => tag?.trim()).filter(Boolean)
+        )
+      );
+    }
+
+    return names;
+  }
+
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
 
   const recalcAndSyncRating = (updatedComments) => {
     const rated = updatedComments.filter((c) => c.rating);
@@ -147,10 +178,20 @@ export default function RecipeDetails() {
       </h1>
 
       {/* Meta line */}
-      <div className="flex items-center gap-4 mb-8 text-sm text-[#3a2e1e]/60">
+      <div className="flex items-center gap-4 mb-4 text-sm text-[#3a2e1e]/60 flex-wrap">
         {recipe.creatorName && <span>By {recipe.creatorName}</span>}
         {recipe.readyInMinutes && <span>{recipe.readyInMinutes} min</span>}
       </div>
+
+      {getRecipeTagNames(recipe).length > 0 && (
+        <div className="recipe-card-tags mb-8">
+          {getRecipeTagNames(recipe).map((tagName) => (
+            <span key={tagName} className="recipe-tag-pill">
+              {tagName}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Main content: image left, description/steps right */}
       <div className="flex flex-col lg:flex-row gap-8 mb-10">

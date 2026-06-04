@@ -9,8 +9,11 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
 function Recipes() {
   const {
     recipes: communityRecipes,
+    tags,
     loading: communityLoading,
     fetchRecipes,
+    fetchTags,
+    fetchRecipesByTag,
     searchRecipes,
   } = useRecipes();
 
@@ -19,6 +22,7 @@ function Recipes() {
 
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTag, setSelectedTag] = useState("");
   const [officialRecipes, setOfficialRecipes] = useState([]);
   const [officialLoading, setOfficialLoading] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState([]);
@@ -27,7 +31,6 @@ function Recipes() {
     async function fetchOfficialRecipes() {
       try {
         setOfficialLoading(true);
-
         const response = await fetch(`${API_URL}/recipe/official`);
 
         if (!response.ok) {
@@ -52,12 +55,29 @@ function Recipes() {
   useEffect(() => {
     if (activeTab !== "community") return;
 
-    if (searchTerm.trim()) {
-      searchRecipes(searchTerm.trim());
+    const trimmedSearch = searchTerm.trim();
+
+    if (trimmedSearch) {
+      searchRecipes(trimmedSearch);
+      setSelectedTag("");
     } else {
+      if (selectedTag) {
+        fetchRecipesByTag(selectedTag);
+      } else {
+        fetchRecipes();
+      }
+    }
+  }, [activeTab, searchTerm, selectedTag, fetchRecipes, searchRecipes, fetchRecipesByTag]);
+
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
+
+  useEffect(() => {
+    if (activeTab === "community" && searchTerm === "") {
       fetchRecipes();
     }
-  }, [activeTab, searchTerm, fetchRecipes, searchRecipes]);
+  }, [searchTerm, activeTab, fetchRecipes]);
 
   useEffect(() => {
     async function fetchSavedRecipes() {
@@ -80,6 +100,22 @@ function Recipes() {
     fetchSavedRecipes();
   }, [userId]);
 
+  function getRecipeTagNames(recipe) {
+    let names = [];
+
+    if (recipe.tags?.length > 0 && tags?.length > 0) {
+      names = recipe.tags
+        .map((tagId) => tags.find((tag) => tag.id === tagId)?.name)
+        .filter(Boolean);
+    }
+
+    if (names.length === 0 && recipe.rawTags?.length > 0) {
+      names = Array.from(new Set(recipe.rawTags.map((tag) => tag?.trim()).filter(Boolean)));
+    }
+
+    return names.slice(0, 3);
+  }
+
   async function handleToggleSave(recipe) {
     if (!userId) {
       console.warn("User must be logged in to save recipes.");
@@ -87,7 +123,6 @@ function Recipes() {
     }
 
     const recipeId = String(recipe.id || recipe.recipeId);
-
     const existingSaved = savedRecipes.find(
       (saved) => String(saved.recipeId) === recipeId
     );
@@ -106,7 +141,6 @@ function Recipes() {
         setSavedRecipes((prev) =>
           prev.filter((saved) => String(saved.recipeId) !== recipeId)
         );
-
         return;
       }
 
@@ -132,15 +166,22 @@ function Recipes() {
     }
   }
 
-  const recipes =
-    activeTab === "official"
-      ? officialRecipes.filter((recipe) =>
-          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : communityRecipes;
+  // Derive client-side filtered view for official recipes vs raw data for community
+  const officialFilteredRecipes = officialRecipes.filter((recipe) => {
+    const matchesSearch = recipe.title
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
-  const loading =
-    activeTab === "official" ? officialLoading : communityLoading;
+    const matchesTag =
+      !selectedTag || recipe.tags?.includes(selectedTag);
+
+    return matchesSearch && matchesTag;
+  });
+
+  const recipes =
+    activeTab === "official" ? officialFilteredRecipes : communityRecipes;
+
+  const loading = activeTab === "official" ? officialLoading : communityLoading;
 
   return (
     <main className="recipes-page">
@@ -163,7 +204,6 @@ function Recipes() {
         >
           Official
         </button>
-
         <button
           className={activeTab === "community" ? "active" : ""}
           onClick={() => setActiveTab("community")}
@@ -171,6 +211,30 @@ function Recipes() {
           Community
         </button>
       </div>
+
+      { tags && (
+        <div className="tag-filter-row">
+          <label htmlFor="tag-select" className="tag-filter-label">
+            Filter by tag:
+          </label>
+          <select
+            id="tag-select"
+            value={selectedTag}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedTag(value);
+            }}
+            className="tag-filter-select"
+          >
+            <option value="">All tags</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {loading && <p>Loading recipes...</p>}
 
@@ -203,6 +267,14 @@ function Recipes() {
                   />
 
                   <h3>{recipe.title || "Recipe Name"}</h3>
+
+                  <div className="recipe-card-tags">
+                    {getRecipeTagNames(recipe).map((tagName) => (
+                      <span key={tagName} className="recipe-tag-pill">
+                        {tagName}
+                      </span>
+                    ))}
+                  </div>
 
                   <p>
                     {recipe.description ||
