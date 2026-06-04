@@ -16,7 +16,6 @@ const {
     updateRecipeRating,
     deleteRecipe,
     getOfficialRecipes,
-    getOfficialRecipes,
 } = require('../db/recipe.db.js');
 
 const router = express.Router();
@@ -133,16 +132,6 @@ router.get('/tag/:tagId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching recipes by tag:', error);
         res.status(500).json({ message: 'Error fetching recipes by tag' });
-    }
-});
-
-router.get('/official', async (req, res) => {
-    try {
-        const recipes = await getOfficialRecipes();
-        res.status(200).json(recipes);
-    } catch (error) {
-        console.error('Error fetching official recipes:', error);
-        res.status(500).json({ message: 'Error fetching official recipes' });
     }
 });
 
