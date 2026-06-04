@@ -32,8 +32,7 @@ router.get("/saved/:userId", async (req, res) => {
         const recipeId = String(savedData.recipeId);
         const source = savedData.source;
 
-        const collectionName =
-          source === "official" ? "externalRecipes" : "recipes";
+        const collectionName = "recipes";
 
         const recipeRef = doc(db, collectionName, recipeId);
         const recipeSnapshot = await getDoc(recipeRef);
