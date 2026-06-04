@@ -50,6 +50,13 @@ export default function RecipeDetails() {
   const [editText, setEditText] = useState("");
   const [editRating, setEditRating] = useState(0);
   const [deletingId, setDeletingId] = useState(null);
+  const [replies, setReplies] = useState({});
+  const [replyingTo, setReplyingTo] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [editingReplyId, setEditingReplyId] = useState(null);
+  const [editReplyText, setEditReplyText] = useState("");
+  const [deletingReply, setDeletingReply] = useState(null);
+  const [showReplies, setShowReplies] = useState({});
 
   function getRecipeTagNames(recipe) {
     let names = [];
@@ -429,15 +436,15 @@ export default function RecipeDetails() {
                       rows={3}
                       className="w-full border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a] resize-none"
                     />
-                    <div className="flex items-center justify-end space-x-2">
+                    <div className="flex items-center justify-end gap-2">
                       <button
-                        className="border-2 rounded-xs p-2 text-sm"
+                        className="px-4 py-1.5 text-sm border border-[#e8e0cc] rounded-lg hover:bg-[#f5f0e4] transition-colors"
                         onClick={() => setEditingId(null)}
                       >
                         Cancel
                       </button>
                       <button
-                        className="border-2 rounded-xs p-2 text-sm bg-[#c4a96a] text-white"
+                        className="px-4 py-1.5 text-sm bg-[#c4a96a] text-white rounded-lg hover:bg-[#b09858] transition-colors"
                         onClick={async () => {
                           await fetch(
                             `${API_URL}/recipe/${recipeId}/comment/${comment.id}`,
@@ -464,24 +471,167 @@ export default function RecipeDetails() {
                     <p className="text-sm text-[#3a2e1e]/75 leading-relaxed">
                       {comment.text}
                     </p>
-                    {isOwner && (
-                      <div className="flex items-center justify-end space-x-2">
+                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[#e8e0cc]/50">
+                      {user && (
                         <button
-                          className="border-2 rounded-xs p-2"
-                          onClick={() => {
-                            setEditingId(comment.id);
-                            setEditText(comment.text);
-                            setEditRating(comment.rating || 0);
-                          }}
+                          className="text-xs font-medium text-[#6b4f2e] hover:text-[#3a2e1e] transition-colors"
+                          onClick={() => setReplyingTo(replyingTo === comment.id ? "" : comment.id)}
                         >
-                          EDIT
+                          Reply
                         </button>
-                        <button
-                          className="border-2 rounded-xs p-2 text-red-500"
-                          onClick={() => setDeletingId(comment.id)}
-                        >
-                          DELETE
-                        </button>
+                      )}
+                      <button
+                        className="text-xs font-medium text-[#6b4f2e] hover:text-[#3a2e1e] transition-colors"
+                        onClick={async () => {
+                          const isShowing = showReplies[comment.id];
+                          setShowReplies(prev => ({ ...prev, [comment.id]: !isShowing }));
+                          if (!isShowing && !replies[comment.id]) {
+                            const res = await fetch(`${API_URL}/recipe/${recipeId}/comment/${comment.id}/replies`);
+                            const data = await res.json();
+                            setReplies(prev => ({ ...prev, [comment.id]: data }));
+                          }
+                        }}
+                      >
+                        {showReplies[comment.id] ? 'Hide replies' : `Show replies${replies[comment.id]?.length ? ` (${replies[comment.id].length})` : ''}`}
+                      </button>
+                      {isOwner && (
+                        <>
+                          <span className="text-[#e8e0cc]">|</span>
+                          <button
+                            className="text-xs font-medium text-[#6b4f2e] hover:text-[#3a2e1e] transition-colors"
+                            onClick={() => {
+                              setEditingId(comment.id);
+                              setEditText(comment.text);
+                              setEditRating(comment.rating || 0);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="text-xs font-medium text-red-400 hover:text-red-600 transition-colors"
+                            onClick={() => setDeletingId(comment.id)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {replyingTo === comment.id && (
+                      <div className="mt-3 space-y-2">
+                        <textarea
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          rows={2}
+                          className="w-full border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a] resize-none"
+                          placeholder="Write a reply..."
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="px-4 py-1.5 bg-[#c4a96a] text-white text-sm rounded-lg hover:bg-[#b09858] transition-colors"
+                            onClick={async () => {
+                              if (!replyText.trim()) return;
+                              const res = await fetch(
+                                `${API_URL}/recipe/${recipeId}/comment/${comment.id}/replies`,
+                                {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    userId: user.id || user.uid,
+                                    username: user.username || user.displayName || user.name,
+                                    text: replyText.trim(),
+                                  }),
+                                }
+                              );
+                              const newReply = await res.json();
+                              setReplies(prev => ({ ...prev, [comment.id]: [...(prev[comment.id] || []), newReply] }));
+                              setReplyText("");
+                              setReplyingTo("");
+                              setShowReplies(prev => ({ ...prev, [comment.id]: true }));
+                            }}
+                          >
+                            Submit Reply
+                          </button>
+                          <button
+                            className="px-4 py-1.5 text-sm border border-[#e8e0cc] rounded-lg hover:bg-[#f5f0e4] transition-colors"
+                            onClick={() => { setReplyingTo(""); setReplyText(""); }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {showReplies[comment.id] && replies[comment.id]?.length > 0 && (
+                      <div className="mt-3 ml-4 pl-3 border-l-2 border-[#e8e0cc] space-y-2">
+                        {replies[comment.id].map(reply => {
+                          const isReplyOwner = user && reply.userId === (user.id || user.uid);
+                          const isEditingReply = editingReplyId === reply.id;
+                          return (
+                            <div key={reply.id} className="p-3 bg-white/80 rounded-lg">
+                              <span className="text-xs font-semibold text-[#3a2e1e]">{reply.username}</span>
+                              {isEditingReply ? (
+                                <div className="mt-1 space-y-2">
+                                  <textarea
+                                    value={editReplyText}
+                                    onChange={(e) => setEditReplyText(e.target.value)}
+                                    rows={2}
+                                    className="w-full border border-[#e8e0cc] rounded-lg px-3 py-2 text-sm bg-white text-[#3a2e1e] focus:outline-none focus:ring-1 focus:ring-[#c4a96a] resize-none"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      className="px-3 py-1 text-xs bg-[#c4a96a] text-white rounded-md hover:bg-[#b09858] transition-colors"
+                                      onClick={async () => {
+                                        await fetch(
+                                          `${API_URL}/recipe/${recipeId}/comment/${comment.id}/replies/${reply.id}`,
+                                          {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ text: editReplyText.trim() }),
+                                          }
+                                        );
+                                        setReplies(prev => ({
+                                          ...prev,
+                                          [comment.id]: prev[comment.id].map(r =>
+                                            r.id === reply.id ? { ...r, text: editReplyText.trim() } : r
+                                          ),
+                                        }));
+                                        setEditingReplyId(null);
+                                        setEditReplyText("");
+                                      }}
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      className="px-3 py-1 text-xs border border-[#e8e0cc] rounded-md hover:bg-[#f5f0e4] transition-colors"
+                                      onClick={() => { setEditingReplyId(null); setEditReplyText(""); }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="text-sm text-[#3a2e1e]/70 leading-relaxed mt-0.5">{reply.text}</p>
+                                  {isReplyOwner && (
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button
+                                        className="text-xs font-medium text-[#6b4f2e] hover:text-[#3a2e1e] transition-colors"
+                                        onClick={() => { setEditingReplyId(reply.id); setEditReplyText(reply.text); }}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        className="text-xs font-medium text-red-400 hover:text-red-600 transition-colors"
+                                        onClick={() => setDeletingReply({ replyId: reply.id, commentId: comment.id })}
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </>
@@ -523,6 +673,44 @@ export default function RecipeDetails() {
                   setComments(updated);
                   recalcAndSyncRating(updated);
                   setDeletingId(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete reply confirmation modal */}
+      {deletingReply && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg">
+            <h3 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-2">
+              Delete Reply
+            </h3>
+            <p className="text-sm text-[#3a2e1e]/70 mb-5">
+              Are you sure you want to delete this reply? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 text-sm border border-[#e8e0cc] rounded-lg hover:bg-[#f5f0e4] transition-colors"
+                onClick={() => setDeletingReply(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                onClick={async () => {
+                  const { replyId, commentId } = deletingReply;
+                  await fetch(
+                    `${API_URL}/recipe/${recipeId}/comment/${commentId}/replies/${replyId}`,
+                    { method: "DELETE" }
+                  );
+                  setReplies(prev => ({
+                    ...prev,
+                    [commentId]: prev[commentId].filter(r => r.id !== replyId),
+                  }));
+                  setDeletingReply(null);
                 }}
               >
                 Delete
