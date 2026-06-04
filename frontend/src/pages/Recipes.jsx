@@ -1,51 +1,107 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
+import { useUser } from "../context/UserContext.jsx";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
-const TEMP_USER_ID = "temp-user-id";
 
 function Recipes() {
-  const { recipes, tags, loading, fetchRecipes, fetchTags, fetchRecipesByTag, searchRecipes } = useRecipes();
+  const {
+    recipes: communityRecipes,
+    tags,
+    loading: communityLoading,
+    fetchRecipes,
+    fetchTags,
+    fetchRecipesByTag,
+    searchRecipes,
+  } = useRecipes();
+
+  const { user } = useUser();
+  const userId = user?.uid || user?.id;
+
+  const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
-  const [savedRecipeIds, setSavedRecipeIds] = useState([]);
   const [selectedTag, setSelectedTag] = useState("");
+  const [officialRecipes, setOfficialRecipes] = useState([]);
+  const [officialLoading, setOfficialLoading] = useState(false);
+  const [savedRecipes, setSavedRecipes] = useState([]);
 
-  // Load all approved recipes on mount, search when searchTerm changes
+  // Fetch official recipes if activeTab changes to official
   useEffect(() => {
-    if (searchTerm.trim()) {
-      searchRecipes(searchTerm.trim());
-      setSelectedTag("");
-    } else if (!selectedTag) {
-      fetchRecipes();
-    }
-  }, [searchTerm, selectedTag, fetchRecipes, searchRecipes]);
+    async function fetchOfficialRecipes() {
+      try {
+        setOfficialLoading(true);
+        const response = await fetch(`${API_URL}/recipe/official`);
 
+        if (!response.ok) {
+          throw new Error("Failed to fetch official recipes");
+        }
+
+        const data = await response.json();
+        setOfficialRecipes(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to fetch official recipes:", error);
+        setOfficialRecipes([]);
+      } finally {
+        setOfficialLoading(false);
+      }
+    }
+
+    if (activeTab === "official") {
+      fetchOfficialRecipes();
+    }
+  }, [activeTab]);
+
+  // Handle Community Tab Search & Tag Filtering
+  useEffect(() => {
+    if (activeTab !== "community") return;
+
+    const trimmedSearch = searchTerm.trim();
+
+    if (trimmedSearch) {
+      searchRecipes(trimmedSearch);
+      setSelectedTag("");
+    } else {
+      if (selectedTag) {
+        fetchRecipesByTag(selectedTag);
+      } else {
+        fetchRecipes();
+      }
+    }
+  }, [activeTab, searchTerm, selectedTag, fetchRecipes, searchRecipes, fetchRecipesByTag]);
+
+  // Always fetch tags on mount for rendering tag pill names globally
   useEffect(() => {
     fetchTags();
   }, [fetchTags]);
 
+  // Fetch user's saved recipes list
   useEffect(() => {
     async function fetchSavedRecipes() {
+      if (!userId) return;
+
       try {
-        const response = await fetch(`${API_URL}/recipe/user/${TEMP_USER_ID}`);
-        if (!response.ok) throw new Error("Failed to fetch saved recipes");
+        const response = await fetch(`${API_URL}/recipe/user/${userId}/saved`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch saved recipes");
+        }
 
         const data = await response.json();
-        setSavedRecipeIds(data.map((recipe) => String(recipe.recipeId || recipe.id)));
+        setSavedRecipes(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch saved recipes:", error);
       }
     }
 
     fetchSavedRecipes();
-  }, []);
+  }, [userId]);
 
   function getRecipeTagNames(recipe) {
     let names = [];
 
-    if (recipe.tags?.length > 0 && tags.length > 0) {
+    if (recipe.tags?.length > 0 && tags?.length > 0) {
       names = recipe.tags
         .map((tagId) => tags.find((tag) => tag.id === tagId)?.name)
         .filter(Boolean);
@@ -58,35 +114,65 @@ function Recipes() {
     return names.slice(0, 3);
   }
 
-  async function handleSave(recipe) {
+  async function handleToggleSave(recipe) {
+    if (!userId) {
+      console.warn("User must be logged in to save recipes.");
+      return;
+    }
+
+    const recipeId = String(recipe.id || recipe.recipeId);
+    const existingSaved = savedRecipes.find(
+      (saved) => String(saved.recipeId) === recipeId
+    );
+
     try {
-      const recipeId = String(recipe.id || recipe.recipeId);
+      if (existingSaved) {
+        const response = await fetch(
+          `${API_URL}/myrecipes/saved/${existingSaved.savedId}`,
+          { method: "DELETE" }
+        );
 
-      const recipePayload = {
-        recipeId,
-        title: recipe.title || "",
-        description: recipe.description || "",
-        imageUrl: recipe.imageUrl || "",
-        readyInMinutes: recipe.readyInMinutes || 0,
-        ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || []
-      };
+        if (!response.ok) {
+          throw new Error("Failed to unsave recipe");
+        }
 
-      const response = await fetch(`${API_URL}/recipe/external`, {
+        setSavedRecipes((prev) =>
+          prev.filter((saved) => String(saved.recipeId) !== recipeId)
+        );
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/recipe/save/${userId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(recipePayload),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipeId,
+          source: activeTab,
+        }),
       });
 
-      if (!response.ok) throw new Error("Failed to process recipe request");
+      if (!response.ok) {
+        throw new Error("Failed to save recipe");
+      }
 
-      setSavedRecipeIds((prev) =>
-        prev.includes(recipeId) ? prev : [...prev, recipeId]
-      );
+      const savedRecipe = await response.json();
+      setSavedRecipes((prev) => [...prev, savedRecipe]);
     } catch (error) {
-      console.error("Error saving recipe:", error);
+      console.error("Error toggling saved recipe:", error);
     }
   }
+
+  // Derive client-side filtered view for official recipes vs raw data for community
+  const recipes =
+    activeTab === "official"
+      ? officialRecipes.filter((recipe) =>
+          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : communityRecipes;
+
+  const loading = activeTab === "official" ? officialLoading : communityLoading;
 
   return (
     <main className="recipes-page">
@@ -102,32 +188,44 @@ function Recipes() {
         <span>⌕</span>
       </div>
 
-      <div className="tag-filter-row">
-        <label htmlFor="tag-select" className="tag-filter-label">
-          Filter by tag:
-        </label>
-        <select
-          id="tag-select"
-          value={selectedTag}
-          onChange={(e) => {
-            const value = e.target.value;
-            setSelectedTag(value);
-            if (value) {
-              fetchRecipesByTag(value);
-            } else {
-              fetchRecipes();
-            }
-          }}
-          className="tag-filter-select"
+      <div className="recipes-toggle">
+        <button
+          className={activeTab === "official" ? "active" : ""}
+          onClick={() => setActiveTab("official")}
         >
-          <option value="">All tags</option>
-          {tags.map((tag) => (
-            <option key={tag.id} value={tag.id}>
-              {tag.name}
-            </option>
-          ))}
-        </select>
+          Official
+        </button>
+        <button
+          className={activeTab === "community" ? "active" : ""}
+          onClick={() => setActiveTab("community")}
+        >
+          Community
+        </button>
       </div>
+
+      { tags && (
+        <div className="tag-filter-row">
+          <label htmlFor="tag-select" className="tag-filter-label">
+            Filter by tag:
+          </label>
+          <select
+            id="tag-select"
+            value={selectedTag}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedTag(value);
+            }}
+            className="tag-filter-select"
+          >
+            <option value="">All tags</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {loading && <p>Loading recipes...</p>}
 
@@ -137,13 +235,24 @@ function Recipes() {
         <section className="recipes-grid">
           {recipes.map((recipe) => {
             const recipeId = String(recipe.id || recipe.recipeId);
-            const isSaved = savedRecipeIds.includes(recipeId);
+            const cleanSummary = recipe.summary?.replace(/<[^>]*>/g, "");
+            const isSaved = savedRecipes.some(
+              (saved) => String(saved.recipeId) === recipeId
+            );
 
             return (
-              <Link to={`/recipes/${recipeId}`} key={recipeId} className="recipe-card-link">
+              <Link
+                to={`/recipes/${recipeId}`}
+                key={`${activeTab}-${recipeId}`}
+                className="recipe-card-link"
+              >
                 <article className="recipe-card">
                   <img
-                    src={recipe.imageUrl || recipe.image || "/placeholder-image.png"}
+                    src={
+                      recipe.imageUrl ||
+                      recipe.image ||
+                      "/placeholder-image.png"
+                    }
                     alt={recipe.title || "Recipe"}
                     className="recipe-image"
                   />
@@ -160,6 +269,7 @@ function Recipes() {
 
                   <p>
                     {recipe.description ||
+                      cleanSummary?.slice(0, 90) ||
                       (recipe.readyInMinutes
                         ? `${recipe.readyInMinutes} mins`
                         : "Description")}
@@ -167,9 +277,11 @@ function Recipes() {
 
                   <button
                     className={`save-button ${isSaved ? "saved" : ""}`}
-                    onClick={(e) => { e.preventDefault(); handleSave(recipe); }}
-                    aria-label="Save recipe"
-                    disabled={isSaved}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleSave(recipe);
+                    }}
+                    aria-label={isSaved ? "Unsave recipe" : "Save recipe"}
                   >
                     {isSaved ? "★" : "☆"}
                   </button>

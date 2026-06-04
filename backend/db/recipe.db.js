@@ -33,13 +33,14 @@ const createRecipe = async (recipeData) => {
         ratingCount: 0,
         ...recipeData,
     };
+
     const docRef = await addDoc(collection(db, "recipes"), newRecipe);
     return { id: docRef.id, ...newRecipe };
 };
 
-// Save or cache an external (Spoonacular) recipe by its external ID
-const saveExternalRecipe = async (recipeId, recipeData) => {
-    const recipeRef = doc(db, "recipes", recipeId);
+// Save an official Spoonacular recipe into recipes collection
+const saveExternalRecipe = async (recipeId, recipeData = {}) => {
+    const recipeRef = doc(db, "recipes", String(recipeId));
     const existing = await getDoc(recipeRef);
     // If caller provided rawTags (from Spoonacular), convert them to Firestore tag IDs
     let tagsToSave = recipeData.tags || [];
@@ -69,7 +70,7 @@ const saveExternalRecipe = async (recipeId, recipeData) => {
 
     if (!existing.exists()) {
         await setDoc(recipeRef, {
-            recipeId,
+            recipeId: String(recipeId),
             isExternal: true,
             status: "approved",
             createdAt: Timestamp.now(),
@@ -89,29 +90,98 @@ const saveExternalRecipe = async (recipeId, recipeData) => {
             console.error(`Failed to update existing recipe ${recipeId} with tags:`, err);
         }
     }
-    return { id: recipeId, ...recipeData };
+
+    return {
+        id: String(recipeId),
+        recipeId: String(recipeId),
+        isExternal: true,
+        ...recipeData,
+    };
 };
 
-// Get a single recipe by Firestore document ID
+// Save a recipe reference for a user
+const saveRecipeForUser = async (userId, recipeId, source) => {
+    const cleanUserId = String(userId);
+    const cleanRecipeId = String(recipeId);
+    const cleanSource = String(source);
+
+    const savedRecipeId = `${cleanUserId}_${cleanSource}_${cleanRecipeId}`;
+    const savedRecipeRef = doc(db, "savedRecipes", savedRecipeId);
+
+    const savedRecipe = {
+        userId: cleanUserId,
+        recipeId: cleanRecipeId,
+        source: cleanSource,
+        savedAt: Timestamp.now(),
+    };
+
+    await setDoc(savedRecipeRef, savedRecipe, { merge: true });
+
+    return {
+        id: savedRecipeId,
+        ...savedRecipe,
+    };
+};
+
+// Get saved recipe references for a user
+const getSavedRecipesByUser = async (userId) => {
+    const q = query(
+        collection(db, "savedRecipes"),
+        where("userId", "==", String(userId))
+    );
+
+    const snapshot = await getDocs(q);
+
+    const recipes = await Promise.all(
+        snapshot.docs.map(async (savedDoc) => {
+            const savedData = savedDoc.data();
+
+            const recipeDoc = await getDoc(
+                doc(db, "recipes", String(savedData.recipeId))
+            );
+
+            if (!recipeDoc.exists()) {
+                return {
+                    savedId: savedDoc.id,
+                    ...savedData,
+                };
+            }
+
+            return {
+                savedId: savedDoc.id,
+                ...savedData,
+                id: recipeDoc.id,
+                ...recipeDoc.data(),
+            };
+        })
+    );
+
+    return recipes;
+};
+
+// Get a single community recipe by Firestore document ID
 const getRecipeById = async (recipeId) => {
-    const recipeDoc = await getDoc(doc(db, "recipes", recipeId));
-    return recipeDoc.exists() ? { id: recipeDoc.id, ...recipeDoc.data() } : null;
+  const recipeDoc = await getDoc(doc(db, "recipes", String(recipeId)));
+  return recipeDoc.exists() ? { id: recipeDoc.id, ...recipeDoc.data() } : null;
 };
 
-// Get all recipes (admin use)
+// Get all recipes, admin use
 const getAllRecipes = async () => {
     const snapshot = await getDocs(collection(db, "recipes"));
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
-// Get all approved recipes (public feed)
+// Get all approved community recipes
 const getApprovedRecipes = async () => {
-    const q = query(collection(db, "recipes"), where("status", "==", "approved"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const snapshot = await getDocs(collection(db, "recipes"));
+
+    return snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((recipe) => recipe.status === "approved")
+        .filter((recipe) => recipe.isExternal !== true);
 };
 
-// Get all pending recipes (admin review queue)
+// Get all pending recipes
 const getPendingRecipes = async () => {
     const q = query(collection(db, "recipes"), where("status", "==", "pending"));
     const snapshot = await getDocs(q);
@@ -120,32 +190,42 @@ const getPendingRecipes = async () => {
 
 // Get all recipes submitted by a specific user
 const getRecipesByUser = async (userId) => {
-    const q = query(collection(db, "recipes"), where("userId", "==", userId));
+    const q = query(
+        collection(db, "recipes"),
+        where("userId", "==", String(userId))
+    );
+
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 // Get recipes by a tag ID
 const getRecipesByTag = async (tagId) => {
-    const q = query(collection(db, "recipes"), where("tags", "array-contains", tagId));
+    const q = query(
+        collection(db, "recipes"),
+        where("tags", "array-contains", tagId)
+    );
+
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
 // Update arbitrary fields on a recipe
 const updateRecipe = async (recipeId, updates) => {
-    const recipeRef = doc(db, "recipes", recipeId);
+    const recipeRef = doc(db, "recipes", String(recipeId));
     await updateDoc(recipeRef, updates);
 };
 
 // Approve a pending recipe
 const approveRecipe = async (recipeId) => {
-    await updateDoc(doc(db, "recipes", recipeId), { status: "approved" });
+    await updateDoc(doc(db, "recipes", String(recipeId)), {
+        status: "approved",
+    });
 };
 
-// Update a recipe's average rating (called after a new comment/rating is saved)
+// Update a recipe's average rating
 const updateRecipeRating = async (recipeId, newAverageRating, newRatingCount) => {
-    await updateDoc(doc(db, "recipes", recipeId), {
+    await updateDoc(doc(db, "recipes", String(recipeId)), {
         averageRating: newAverageRating,
         ratingCount: newRatingCount,
     });
@@ -153,22 +233,36 @@ const updateRecipeRating = async (recipeId, newAverageRating, newRatingCount) =>
 
 // Delete a recipe
 const deleteRecipe = async (recipeId) => {
-    await deleteDoc(doc(db, "recipes", recipeId));
+    await deleteDoc(doc(db, "recipes", String(recipeId)));
 };
 
-// Search approved recipes by title (case-insensitive, in-memory filter)
+// Search approved community recipes by title
 const searchApprovedRecipes = async (searchTerm) => {
-    const q = query(collection(db, "recipes"), where("status", "==", "approved"));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(collection(db, "recipes"));
     const term = searchTerm.toLowerCase();
+
     return snapshot.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((r) => r.title && r.title.toLowerCase().includes(term));
+        .filter((recipe) => recipe.status === "approved")
+        .filter((recipe) => recipe.isExternal !== true)
+        .filter((recipe) =>
+            recipe.title && recipe.title.toLowerCase().includes(term)
+        );
+};
+
+const getOfficialRecipes = async () => {
+  const snapshot = await getDocs(collection(db, "recipes"));
+
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((recipe) => recipe.isExternal === true);
 };
 
 module.exports = {
     createRecipe,
     saveExternalRecipe,
+    saveRecipeForUser,
+    getSavedRecipesByUser,
     getRecipeById,
     getAllRecipes,
     getApprovedRecipes,
@@ -180,4 +274,5 @@ module.exports = {
     approveRecipe,
     updateRecipeRating,
     deleteRecipe,
+    getOfficialRecipes,
 };

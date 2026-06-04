@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx';
 import Recipes from './pages/Recipes.jsx';
 import RecipeDetails from './pages/RecipeDetails.jsx';
 import CreateRecipes from './pages/CreateRecipes.jsx';
+import EditRecipe from './pages/EditRecipe.jsx';
 import MyRecipes from './pages/MyRecipes.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import './index.css';
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
       {
         path: 'myrecipes',
         element: <MyRecipes />
+      },
+      {
+        path: 'recipes/:recipeId/edit',
+        element: <EditRecipe />
       },
       {
         path: 'admin',
