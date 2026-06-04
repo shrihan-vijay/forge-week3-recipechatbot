@@ -189,11 +189,12 @@ const searchApprovedRecipes = async (searchTerm) => {
 };
 
 const getOfficialRecipes = async () => {
-    const snapshot = await getDocs(collection(db, "recipes"));
+    const snapshot = await getDocs(collection(db, "externalRecipes"));
 
-    return snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((recipe) => recipe.isExternal === true);
+    return snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+    }));
 };
 
 module.exports = {
