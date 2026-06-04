@@ -13,6 +13,8 @@ function MyRecipes() {
   const [savedRecipes, setSavedRecipes] = useState([]);
   const [createdRecipes, setCreatedRecipes] = useState([]);
   const [search, setSearch] = useState("");
+  const [removingSavedId, setRemovingSavedId] = useState(null);
+  const [deletingCreatedId, setDeletingCreatedId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -56,12 +58,6 @@ function MyRecipes() {
   }
 
   async function handleRemoveSaved(savedId) {
-  const confirmed = window.confirm(
-    "Remove this recipe from your saved recipes?"
-  );
-
-  if (!confirmed) return;
-
   try {
     const res = await fetch(`${API_URL}/myrecipes/saved/${savedId}`, {
       method: "DELETE",
@@ -74,35 +70,32 @@ function MyRecipes() {
     setSavedRecipes((prev) =>
       prev.filter((recipe) => recipe.savedId !== savedId)
     );
+
+    setRemovingSavedId(null);
   } catch (error) {
     console.error("Error removing saved recipe:", error);
   }
 }
 
-  async function handleDeleteCreated(recipeId) {
-    const confirmed = window.confirm(
-      "Delete this recipe? This action cannot be undone."
+async function handleDeleteCreated(recipeId) {
+  try {
+    const res = await fetch(`${API_URL}/myrecipes/created/${recipeId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to delete created recipe");
+    }
+
+    setCreatedRecipes((prev) =>
+      prev.filter((recipe) => String(recipe.id) !== String(recipeId))
     );
 
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`${API_URL}/myrecipes/created/${recipeId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to delete created recipe");
-      }
-
-      setCreatedRecipes((prev) =>
-        prev.filter((recipe) => recipe.id !== recipeId)
-      );
-    } catch (error) {
-      console.error("Error deleting created recipe:", error);
-    }
+    setDeletingCreatedId(null);
+  } catch (error) {
+    console.error("Error deleting created recipe:", error);
   }
-
+}
   const recipes = activeTab === "saved" ? savedRecipes : createdRecipes;
 
   const filteredRecipes = recipes.filter((recipe) =>
@@ -178,7 +171,7 @@ function MyRecipes() {
                   <div className="recipe-actions">
                     <button
                       className="remove-btn"
-                      onClick={() => handleRemoveSaved(recipe.savedId)}
+                      onClick={() => setRemovingSavedId(recipe.savedId)}
                     >
                       ✕
                     </button>
@@ -194,7 +187,7 @@ function MyRecipes() {
 
                     <button
                       className="delete-btn"
-                      onClick={() => handleDeleteCreated(recipeId)}
+                      onClick={() => setDeletingCreatedId(recipeId)}
                     >
                       Delete
                     </button>
@@ -205,6 +198,67 @@ function MyRecipes() {
           })}
         </section>
       )}
+      {/* Remove saved recipe confirmation modal */}
+{removingSavedId && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg">
+      <h3 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-2">
+        Remove Saved Recipe
+      </h3>
+
+      <p className="text-sm text-[#3a2e1e]/70 mb-5">
+        Are you sure you want to remove this recipe from your saved recipes?
+      </p>
+
+      <div className="flex justify-end gap-3">
+        <button
+          className="px-4 py-2 text-sm border border-[#e8e0cc] rounded-lg hover:bg-[#f5f0e4] transition-colors"
+          onClick={() => setRemovingSavedId(null)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          onClick={() => handleRemoveSaved(removingSavedId)}
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Delete created recipe confirmation modal */}
+{deletingCreatedId && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg">
+      <h3 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-2">
+        Delete Recipe
+      </h3>
+
+      <p className="text-sm text-[#3a2e1e]/70 mb-5">
+        Are you sure you want to delete this recipe? This action cannot be undone.
+      </p>
+
+      <div className="flex justify-end gap-3">
+        <button
+          className="px-4 py-2 text-sm border border-[#e8e0cc] rounded-lg hover:bg-[#f5f0e4] transition-colors"
+          onClick={() => setDeletingCreatedId(null)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          onClick={() => handleDeleteCreated(deletingCreatedId)}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </main>
   );
 }
