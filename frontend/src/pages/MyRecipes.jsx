@@ -25,7 +25,7 @@ function MyRecipes() {
 
   async function fetchSavedRecipes() {
     try {
-      const res = await fetch(`${API_URL}/myrecipes/saved/${userId}`);
+      const res = await fetch(`${API_URL}/recipe/user/${userId}/saved`);
       const data = await res.json();
 
       if (!res.ok) {

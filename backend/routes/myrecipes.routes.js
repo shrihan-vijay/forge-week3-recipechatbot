@@ -25,8 +25,6 @@ router.get("/saved/:userId", async (req, res) => {
     );
 
     const savedSnapshot = await getDocs(savedQuery);
-    console.log("Looking for saved recipes for userId:", req.params.userId);
-    console.log("Saved recipes found:", savedSnapshot.size);
 
     const savedRecipes = await Promise.all(
       savedSnapshot.docs.map(async (savedDoc) => {

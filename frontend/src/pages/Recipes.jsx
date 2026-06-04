@@ -95,7 +95,7 @@ function Recipes() {
     try {
       if (existingSaved) {
         const response = await fetch(
-          `${API_URL}/myrecipes/saved/${existingSaved.id}`,
+          `${API_URL}/myrecipes/saved/${existingSaved.savedId}`,
           { method: "DELETE" }
         );
 

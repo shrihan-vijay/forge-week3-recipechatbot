@@ -95,10 +95,31 @@ const getSavedRecipesByUser = async (userId) => {
 
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-    }));
+    const recipes = await Promise.all(
+        snapshot.docs.map(async (savedDoc) => {
+            const savedData = savedDoc.data();
+
+            const recipeDoc = await getDoc(
+                doc(db, "recipes", String(savedData.recipeId))
+            );
+
+            if (!recipeDoc.exists()) {
+                return {
+                    savedId: savedDoc.id,
+                    ...savedData,
+                };
+            }
+
+            return {
+                savedId: savedDoc.id,
+                ...savedData,
+                id: recipeDoc.id,
+                ...recipeDoc.data(),
+            };
+        })
+    );
+
+    return recipes;
 };
 
 // Get a single community recipe by Firestore document ID
