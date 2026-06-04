@@ -61,9 +61,11 @@ export default function AdminDashboard() {
                                     alt={recipe.title || "Recipe"}
                                     className="admin-card-image"
                                 />
-                                <h3>{recipe.title || "Untitled Recipe"}</h3>
-                                <p className="admin-card-desc">{recipe.description || "No description"}</p>
-                                <p className="admin-card-author">By: {recipe.creatorName || "Unknown"}</p>
+                                <div className="admin-card-content">
+                                    <h3>{recipe.title || "Untitled Recipe"}</h3>
+                                    <p className="admin-card-desc">{recipe.description || "No description"}</p>
+                                    <p className="admin-card-author">By: {recipe.creatorName || "Unknown"}</p>
+                                </div>
                                 <div className="admin-card-actions">
                                     <button
                                         className="admin-btn approve"
