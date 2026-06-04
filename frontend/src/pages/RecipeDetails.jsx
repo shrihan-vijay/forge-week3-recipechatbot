@@ -135,10 +135,10 @@ export default function RecipeDetails() {
     <div className="px-8 py-10 text-left">
       {/* Back link */}
       <Link
-        to="/recipes"
+        to={recipe.status === "pending" ? "/admin" : "/recipes"}
         className="text-sm text-[#6b4f2e] no-underline hover:underline mb-6 inline-block"
       >
-        &larr; Back to recipes
+        &larr; {recipe.status === "pending" ? "Back to admin dashboard" : "Back to recipes"}
       </Link>
 
       {/* Title */}
@@ -240,7 +240,8 @@ export default function RecipeDetails() {
         </div>
       </div>
 
-      {/* Reviews section */}
+      {/* Reviews section — only for approved recipes */}
+      {recipe.status === "approved" && (
       <div className="border-t border-[#e8e0cc] pt-8">
         <h2 className="text-lg font-serif font-semibold text-[#3a2e1e] mb-5">
           Reviews
@@ -450,6 +451,8 @@ export default function RecipeDetails() {
           </div>
         )}
       </div>
+
+      )}
 
       {/* Delete confirmation modal */}
       {deletingId && (
