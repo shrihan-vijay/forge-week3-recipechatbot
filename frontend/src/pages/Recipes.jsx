@@ -21,7 +21,7 @@ function Recipes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [officialRecipes, setOfficialRecipes] = useState([]);
   const [officialLoading, setOfficialLoading] = useState(false);
-  const [savedRecipeIds, setSavedRecipeIds] = useState([]);
+  const [savedRecipes, setSavedRecipes] = useState([]);
 
   useEffect(() => {
     async function fetchOfficialRecipes() {
@@ -64,17 +64,14 @@ function Recipes() {
       if (!userId) return;
 
       try {
-        const response = await fetch(`${API_URL}/recipe/user/${userId}`);
+        const response = await fetch(`${API_URL}/recipe/user/${userId}/saved`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch saved recipes");
         }
 
         const data = await response.json();
-
-        setSavedRecipeIds(
-          data.map((recipe) => String(recipe.recipeId || recipe.id))
-        );
+        setSavedRecipes(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch saved recipes:", error);
       }
@@ -83,14 +80,35 @@ function Recipes() {
     fetchSavedRecipes();
   }, [userId]);
 
-  async function handleSave(recipe) {
+  async function handleToggleSave(recipe) {
     if (!userId) {
       console.warn("User must be logged in to save recipes.");
       return;
     }
 
+    const recipeId = String(recipe.id || recipe.recipeId);
+
+    const existingSaved = savedRecipes.find(
+      (saved) => String(saved.recipeId) === recipeId
+    );
+
     try {
-      const recipeId = String(recipe.id || recipe.recipeId);
+      if (existingSaved) {
+        const response = await fetch(
+          `${API_URL}/myrecipes/saved/${existingSaved.id}`,
+          { method: "DELETE" }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to unsave recipe");
+        }
+
+        setSavedRecipes((prev) =>
+          prev.filter((saved) => String(saved.recipeId) !== recipeId)
+        );
+
+        return;
+      }
 
       const response = await fetch(`${API_URL}/recipe/save/${userId}`, {
         method: "POST",
@@ -107,11 +125,10 @@ function Recipes() {
         throw new Error("Failed to save recipe");
       }
 
-      setSavedRecipeIds((prev) =>
-        prev.includes(recipeId) ? prev : [...prev, recipeId]
-      );
+      const savedRecipe = await response.json();
+      setSavedRecipes((prev) => [...prev, savedRecipe]);
     } catch (error) {
-      console.error("Error saving recipe:", error);
+      console.error("Error toggling saved recipe:", error);
     }
   }
 
@@ -164,7 +181,9 @@ function Recipes() {
           {recipes.map((recipe) => {
             const recipeId = String(recipe.id || recipe.recipeId);
             const cleanSummary = recipe.summary?.replace(/<[^>]*>/g, "");
-            const isSaved = savedRecipeIds.includes(recipeId);
+            const isSaved = savedRecipes.some(
+              (saved) => String(saved.recipeId) === recipeId
+            );
 
             return (
               <Link
@@ -197,10 +216,9 @@ function Recipes() {
                     className={`save-button ${isSaved ? "saved" : ""}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      handleSave(recipe);
+                      handleToggleSave(recipe);
                     }}
-                    aria-label="Save recipe"
-                    disabled={isSaved}
+                    aria-label={isSaved ? "Unsave recipe" : "Save recipe"}
                   >
                     {isSaved ? "★" : "☆"}
                   </button>
