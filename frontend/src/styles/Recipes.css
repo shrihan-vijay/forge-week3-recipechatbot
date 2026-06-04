@@ -35,6 +35,28 @@
   font-size: 16px;
 }
 
+.tag-filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.tag-filter-label {
+  font-size: 15px;
+  color: #333;
+}
+
+.tag-filter-select {
+  min-width: 200px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid #d5d5d5;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+}
+
 .recipes-toggle {
   display: flex;
   gap: 16px;
@@ -99,6 +121,51 @@
   font-size: 16px;
   line-height: 1.45;
   color: #666;
+}
+
+.tag-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.tag-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-filter-button,
+.tag-clear-button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #ebebeb;
+  color: #333;
+}
+
+.tag-filter-button.active {
+  background-color: #5d6f89;
+  color: #fff;
+}
+
+.recipe-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.recipe-tag-pill {
+  background-color: rgba(255, 255, 255, 0.85);
+  color: #333;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
 }
 
 .save-button {

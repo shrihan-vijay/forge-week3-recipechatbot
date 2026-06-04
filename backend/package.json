@@ -4,7 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "sync-external-tags": "node scripts/sync-external-recipe-tags.js"
   },
   "keywords": [],
   "author": "",
