@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
 import { useUser } from "../context/UserContext.jsx";
+import { useUser } from "../context/UserContext.jsx";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -27,8 +28,6 @@ function Recipes() {
 
   const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
-  const [officialRecipes, setOfficialRecipes] = useState([]);
-  const [officialLoading, setOfficialLoading] = useState(false);
   const [officialRecipes, setOfficialRecipes] = useState([]);
   const [officialLoading, setOfficialLoading] = useState(false);
   const [savedRecipeIds, setSavedRecipeIds] = useState([]);
@@ -60,8 +59,32 @@ function Recipes() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab !== "community") return;
+    async function fetchOfficialRecipes() {
+      try {
+        setOfficialLoading(true);
 
+        const response = await fetch(`${API_URL}/recipe/official`);
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch official recipes");
+        }
+
+        const data = await response.json();
+        setOfficialRecipes(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to fetch official recipes:", error);
+        setOfficialRecipes([]);
+      } finally {
+        setOfficialLoading(false);
+      }
+    }
+
+    if (activeTab === "official") {
+      fetchOfficialRecipes();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     if (activeTab !== "community") return;
 
     if (searchTerm.trim()) {
@@ -84,17 +107,8 @@ function Recipes() {
         if (!response.ok) {
           throw new Error("Failed to fetch saved recipes");
         }
-        const response = await fetch(`${API_URL}/recipe/user/${TEMP_USER_ID}/saved`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch saved recipes");
-        }
 
         const data = await response.json();
-
-        setSavedRecipeIds(
-          data.map((recipe) => String(recipe.recipeId || recipe.id))
-        );
 
         setSavedRecipeIds(
           data.map((recipe) => String(recipe.recipeId || recipe.id))
@@ -106,8 +120,14 @@ function Recipes() {
 
     fetchSavedRecipes();
   }, [userId]);
+  }, [userId]);
 
   async function handleSave(recipe) {
+    if (!userId) {
+      console.warn("User must be logged in to save recipes.");
+      return;
+    }
+
     if (!userId) {
       console.warn("User must be logged in to save recipes.");
       return;
@@ -119,7 +139,6 @@ function Recipes() {
       const savePayload = {
         recipeId,
         source: activeTab,
-        source: activeTab,
       };
 
       const response = await fetch(`${API_URL}/recipe/save/${userId}`, {
@@ -128,15 +147,8 @@ function Recipes() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(savePayload),
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(savePayload),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save recipe");
-      }
       if (!response.ok) {
         throw new Error("Failed to save recipe");
       }
@@ -148,6 +160,16 @@ function Recipes() {
       console.error("Error saving recipe:", error);
     }
   }
+
+  const recipes =
+    activeTab === "official"
+      ? officialRecipes.filter((recipe) =>
+          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : communityRecipes;
+
+  const loading =
+    activeTab === "official" ? officialLoading : communityLoading;
 
   const recipes =
     activeTab === "official"
@@ -189,22 +211,6 @@ function Recipes() {
         </button>
       </div>
 
-      <div className="recipes-toggle">
-        <button
-          className={activeTab === "official" ? "active" : ""}
-          onClick={() => setActiveTab("official")}
-        >
-          Official
-        </button>
-
-        <button
-          className={activeTab === "community" ? "active" : ""}
-          onClick={() => setActiveTab("community")}
-        >
-          Community
-        </button>
-      </div>
-
       {loading && <p>Loading recipes...</p>}
 
       {!loading && recipes.length === 0 && <p>No recipes found.</p>}
@@ -214,7 +220,6 @@ function Recipes() {
           {recipes.map((recipe) => {
             const recipeId = String(recipe.id || recipe.recipeId);
             const cleanSummary = recipe.summary?.replace(/<[^>]*>/g, "");
-            const cleanSummary = recipe.summary?.replace(/<[^>]*>/g, "");
             const isSaved = savedRecipeIds.includes(recipeId);
 
             return (
@@ -223,13 +228,13 @@ function Recipes() {
                 key={`${activeTab}-${recipeId}`}
                 className="recipe-card-link"
               >
+              <Link
+                to={`/recipes/${recipeId}`}
+                key={`${activeTab}-${recipeId}`}
+                className="recipe-card-link"
+              >
                 <article className="recipe-card">
                   <img
-                    src={
-                      recipe.imageUrl ||
-                      recipe.image ||
-                      "/placeholder-image.png"
-                    }
                     src={
                       recipe.imageUrl ||
                       recipe.image ||
@@ -244,7 +249,6 @@ function Recipes() {
                   <p>
                     {recipe.description ||
                       cleanSummary?.slice(0, 90) ||
-                      cleanSummary?.slice(0, 90) ||
                       (recipe.readyInMinutes
                         ? `${recipe.readyInMinutes} mins`
                         : "Description")}
@@ -252,10 +256,6 @@ function Recipes() {
 
                   <button
                     className={`save-button ${isSaved ? "saved" : ""}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleSave(recipe);
-                    }}
                     onClick={(e) => {
                       e.preventDefault();
                       handleSave(recipe);

@@ -3,9 +3,7 @@ const {
     createRecipe,
     saveExternalRecipe,
     saveRecipeForUser,
-    saveRecipeForUser,
     getRecipeById,
-    getSavedRecipesByUser,
     getSavedRecipesByUser,
     getAllRecipes,
     getApprovedRecipes,
@@ -18,13 +16,13 @@ const {
     updateRecipeRating,
     deleteRecipe,
     getOfficialRecipes,
+    getOfficialRecipes,
 } = require('../db/recipe.db.js');
 
 const router = express.Router();
 
 router.get('/search', async (req, res) => {
     const { query } = req.query;
-
 
     if (!query?.trim()) {
         return res.status(400).json({ message: 'Search query is required' });
@@ -93,29 +91,6 @@ router.get('/user/:userId/saved', async (req, res) => {
 });
 
 // Optional backwards-compatible route
-// Recipes created by user
-router.get('/user/:userId/created', async (req, res) => {
-    try {
-        const recipes = await getRecipesByUser(req.params.userId);
-        res.status(200).json(recipes);
-    } catch (error) {
-        console.error('Error fetching created recipes:', error);
-        res.status(500).json({ message: 'Error fetching created recipes' });
-    }
-});
-
-// Saved recipe references for user
-router.get('/user/:userId/saved', async (req, res) => {
-    try {
-        const recipes = await getSavedRecipesByUser(req.params.userId);
-        res.status(200).json(recipes);
-    } catch (error) {
-        console.error('Error fetching saved recipes:', error);
-        res.status(500).json({ message: 'Error fetching saved recipes' });
-    }
-});
-
-// Optional backwards-compatible route
 router.get('/user/:userId', async (req, res) => {
     try {
         const recipes = await getRecipesByUser(req.params.userId);
@@ -132,17 +107,6 @@ router.post('/save/:userId', async (req, res) => {
 
     if (!userId?.trim()) {
         return res.status(400).json({ message: 'User ID is required' });
-        console.error('Error fetching created recipes:', error);
-        res.status(500).json({ message: 'Error fetching created recipes' });
-    }
-});
-
-router.post('/save/:userId', async (req, res) => {
-    const { userId } = req.params;
-    const { recipeId, source } = req.body;
-
-    if (!userId?.trim()) {
-        return res.status(400).json({ message: 'User ID is required' });
     }
 
     if (!String(recipeId || '').trim()) {
@@ -161,23 +125,6 @@ router.post('/save/:userId', async (req, res) => {
         res.status(500).json({ message: 'Error saving recipe', error: error.message });
     }
 });
-
-
-    if (!String(recipeId || '').trim()) {
-        return res.status(400).json({ message: 'Recipe ID is required' });
-    }
-
-    if (!['official', 'community'].includes(source)) {
-        return res.status(400).json({ message: 'Source must be official or community' });
-    }
-
-    try {
-        const savedRecipe = await saveRecipeForUser(userId, String(recipeId), source);
-        res.status(201).json(savedRecipe);
-    } catch (error) {
-        console.error('Error saving recipe:', error);
-        res.status(500).json({ message: 'Error saving recipe', error: error.message });
-    };
 
 router.get('/tag/:tagId', async (req, res) => {
     try {
@@ -186,6 +133,16 @@ router.get('/tag/:tagId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching recipes by tag:', error);
         res.status(500).json({ message: 'Error fetching recipes by tag' });
+    }
+});
+
+router.get('/official', async (req, res) => {
+    try {
+        const recipes = await getOfficialRecipes();
+        res.status(200).json(recipes);
+    } catch (error) {
+        console.error('Error fetching official recipes:', error);
+        res.status(500).json({ message: 'Error fetching official recipes' });
     }
 });
 
@@ -232,12 +189,8 @@ router.post('/external', async (req, res) => {
     if (!String(recipeId || '').trim()) {
         return res.status(400).json({ message: 'Recipe ID is required' });
     }
-    if (!String(recipeId || '').trim()) {
-        return res.status(400).json({ message: 'Recipe ID is required' });
-    }
 
     try {
-        const recipe = await saveExternalRecipe(String(recipeId), req.body);
         const recipe = await saveExternalRecipe(String(recipeId), req.body);
         res.status(201).json(recipe);
     } catch (error) {
