@@ -37,16 +37,19 @@ const createRecipe = async (recipeData) => {
     return { id: docRef.id, ...newRecipe };
 };
 
-// Save only a reference to an official Spoonacular recipe
+// Save an official Spoonacular recipe into recipes collection
 const saveExternalRecipe = async (recipeId, recipeData = {}) => {
-    const externalRecipeRef = doc(db, "externalRecipes", String(recipeId));
-    const existing = await getDoc(externalRecipeRef);
+    const recipeRef = doc(db, "recipes", String(recipeId));
+    const existing = await getDoc(recipeRef);
 
     if (!existing.exists()) {
-        await setDoc(externalRecipeRef, {
+        await setDoc(recipeRef, {
             recipeId: String(recipeId),
-            source: "official",
+            isExternal: true,
+            status: "approved",
             createdAt: Timestamp.now(),
+            averageRating: 0,
+            ratingCount: 0,
             ...recipeData,
         });
     }
@@ -54,7 +57,8 @@ const saveExternalRecipe = async (recipeId, recipeData = {}) => {
     return {
         id: String(recipeId),
         recipeId: String(recipeId),
-        source: "official",
+        isExternal: true,
+        ...recipeData,
     };
 };
 
