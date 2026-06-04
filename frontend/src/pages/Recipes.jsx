@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecipes } from "../context/RecipeContext";
 import { useUser } from "../context/UserContext.jsx";
-import { useUser } from "../context/UserContext.jsx";
 import "../styles/Recipes.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001";
@@ -19,44 +18,10 @@ function Recipes() {
   const userId = user?.uid || user?.id;
 
   const [activeTab, setActiveTab] = useState("official");
-  const {
-    recipes: communityRecipes,
-    loading: communityLoading,
-    fetchRecipes,
-    searchRecipes,
-  } = useRecipes();
-
-  const [activeTab, setActiveTab] = useState("official");
   const [searchTerm, setSearchTerm] = useState("");
   const [officialRecipes, setOfficialRecipes] = useState([]);
   const [officialLoading, setOfficialLoading] = useState(false);
   const [savedRecipeIds, setSavedRecipeIds] = useState([]);
-
-  useEffect(() => {
-    async function fetchOfficialRecipes() {
-      try {
-        setOfficialLoading(true);
-
-        const response = await fetch(`${API_URL}/recipe/official`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch official recipes");
-        }
-
-        const data = await response.json();
-        setOfficialRecipes(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to fetch official recipes:", error);
-        setOfficialRecipes([]);
-      } finally {
-        setOfficialLoading(false);
-      }
-    }
-
-    if (activeTab === "official") {
-      fetchOfficialRecipes();
-    }
-  }, [activeTab]);
 
   useEffect(() => {
     async function fetchOfficialRecipes() {
@@ -100,10 +65,7 @@ function Recipes() {
 
       try {
         const response = await fetch(`${API_URL}/recipe/user/${userId}`);
-        if (!userId) {
-          console.warn("User must be logged in to save recipes.");
-          return;
-        }
+
         if (!response.ok) {
           throw new Error("Failed to fetch saved recipes");
         }
@@ -120,14 +82,8 @@ function Recipes() {
 
     fetchSavedRecipes();
   }, [userId]);
-  }, [userId]);
 
   async function handleSave(recipe) {
-    if (!userId) {
-      console.warn("User must be logged in to save recipes.");
-      return;
-    }
-
     if (!userId) {
       console.warn("User must be logged in to save recipes.");
       return;
@@ -136,17 +92,15 @@ function Recipes() {
     try {
       const recipeId = String(recipe.id || recipe.recipeId);
 
-      const savePayload = {
-        recipeId,
-        source: activeTab,
-      };
-
       const response = await fetch(`${API_URL}/recipe/save/${userId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(savePayload),
+        body: JSON.stringify({
+          recipeId,
+          source: activeTab,
+        }),
       });
 
       if (!response.ok) {
@@ -160,16 +114,6 @@ function Recipes() {
       console.error("Error saving recipe:", error);
     }
   }
-
-  const recipes =
-    activeTab === "official"
-      ? officialRecipes.filter((recipe) =>
-          recipe.title?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : communityRecipes;
-
-  const loading =
-    activeTab === "official" ? officialLoading : communityLoading;
 
   const recipes =
     activeTab === "official"
@@ -223,11 +167,6 @@ function Recipes() {
             const isSaved = savedRecipeIds.includes(recipeId);
 
             return (
-              <Link
-                to={`/recipes/${recipeId}`}
-                key={`${activeTab}-${recipeId}`}
-                className="recipe-card-link"
-              >
               <Link
                 to={`/recipes/${recipeId}`}
                 key={`${activeTab}-${recipeId}`}
