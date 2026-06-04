@@ -16,14 +16,13 @@ const BasketIcon = () => (
 
 const navLinks = [
     { label: "Home", path: "/home" },
-    { label: "Admin", path: "/admin" },
     { label: "Recipes", path: "/recipes" },
     { label: "My Recipes", path: "/myrecipes" },
     { label: "Create", path: "/create" },
 ];
 
 export default function Navbar() {
-    const { logout } = useUser();
+    const { user, logout } = useUser();
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
 
@@ -46,6 +45,16 @@ export default function Navbar() {
                             </Link>
                         </li>
                     ))}
+                    {user?.admin && (
+                        <li>
+                            <Link
+                                to="/admin"
+                                className="no-underline text-sm text-[#3a2e1e] tracking-wide transition-opacity duration-150 hover:opacity-50"
+                            >
+                                Admin
+                            </Link>
+                        </li>
+                    )}
                     <li>
                         <button
                             onClick={() => setShowModal(true)}

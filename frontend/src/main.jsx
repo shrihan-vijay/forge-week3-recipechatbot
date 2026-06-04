@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createBrowserRouter, Router, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Router, RouterProvider, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing.jsx';
 import Home from './pages/Home.jsx';
 import Recipes from './pages/Recipes.jsx';
@@ -9,8 +9,15 @@ import CreateRecipes from './pages/CreateRecipes.jsx';
 import EditRecipe from './pages/EditRecipe.jsx';
 import MyRecipes from './pages/MyRecipes.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import { useUser } from './context/UserContext.jsx';
 import './index.css';
 import App from './App.jsx';
+
+function AdminRoute({ children }) {
+  const { user } = useUser();
+  if (!user?.admin) return <Navigate to="/home" replace />;
+  return children;
+}
 
 const router = createBrowserRouter([
   {
@@ -47,7 +54,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin',
-        element: <AdminDashboard />
+        element: <AdminRoute><AdminDashboard /></AdminRoute>
       }
     ]
   }
