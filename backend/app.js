@@ -8,6 +8,7 @@ const userRoutes = require("./routes/user.routes.js");
 const recipeRoutes = require("./routes/recipe.routes.js");
 const tagRoutes = require("./routes/tag.routes.js");
 const commentRoutes = require("./routes/comment.routes.js");
+const uploadRoutes = require("./routes/upload.routes.js");
 const spoonacular = require("./utility/spoonacular.js");
 const chat = require("./routes/chat.routes.js");
 
@@ -21,6 +22,7 @@ app.use("/user", userRoutes);
 app.use("/recipe", recipeRoutes);
 app.use("/tag", tagRoutes);
 app.use("/recipe/:recipeId/comment", commentRoutes);
+app.use("/upload", uploadRoutes);
 app.use("/api/spoonacular", spoonacular);
 app.use("/message", chat);
 
