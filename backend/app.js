@@ -11,6 +11,7 @@ const commentRoutes = require("./routes/comment.routes.js");
 const uploadRoutes = require("./routes/upload.routes.js");
 const spoonacular = require("./utility/spoonacular.js");
 const chat = require("./routes/chat.routes.js");
+const myRecipesRoutes = require("./routes/myrecipes.routes.js");
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/recipe/:recipeId/comment", commentRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/api/spoonacular", spoonacular);
 app.use("/message", chat);
+app.use("/myrecipes", myRecipesRoutes);
 
 app.get("/", (req, res) => {
   res.send("Express backend is running and Firebase is connected");
