@@ -1,6 +1,7 @@
 # The Picnic Basket
 
 A recipe web app that lets users browse recipes, create their own recipes, save favorites, and ask a chatbot for recipe help.
+Deployed link to access application: thepicnicbasket.netlify.app
 
 ## Features 
 
