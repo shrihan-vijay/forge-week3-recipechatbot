@@ -21,6 +21,9 @@ export default function CreateRecipes() {
   const [ingredientInput, setIngredientInput] = useState("");
   const [ingredients, setIngredients] = useState([]);
   const [status, setStatus] = useState("");
+  const [availableTags, setAvailableTags] = useState([]);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const { user } = useUser();
 
   useEffect(() => {
@@ -28,6 +31,23 @@ export default function CreateRecipes() {
       if (imagePreview) URL.revokeObjectURL(imagePreview);
     };
   }, [imagePreview]);
+
+  // Fetch available tags from database
+  useEffect(() => {
+    async function fetchTags() {
+      try {
+        const response = await fetch(`${API_URL}/tag`);
+        if (response.ok) {
+          const tags = await response.json();
+          setAvailableTags(Array.isArray(tags) ? tags : []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tags:", error);
+      }
+    }
+
+    fetchTags();
+  }, []);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -75,24 +95,44 @@ export default function CreateRecipes() {
     return publicUrl;
   }
 
-  function addTag(tagName) {
-    const nextTag = tagName.trim().toLowerCase();
-    if (!nextTag) return;
+  function addTag(tagId, tagName) {
+    // Only allow tags that exist in the database
+    if (!tagId || selectedTags.includes(tagId)) {
+      return;
+    }
 
-    setSelectedTags((prev) =>
-      prev.includes(nextTag) ? prev : [...prev, nextTag]
-    );
+    setSelectedTags((prev) => [...prev, tagId]);
     setTagInput("");
+    setShowTagSuggestions(false);
+    setTagSuggestions([]);
   }
 
-  function removeTag(tagName) {
-    setSelectedTags((prev) => prev.filter((tag) => tag !== tagName));
+  function removeTag(tagId) {
+    setSelectedTags((prev) => prev.filter((id) => id !== tagId));
   }
 
-  function handleTagKeyDown(event) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    addTag(tagInput);
+  function handleTagInputChange(value) {
+    setTagInput(value);
+
+    if (value.trim().length === 0) {
+      setShowTagSuggestions(false);
+      setTagSuggestions([]);
+      return;
+    }
+
+    // Filter available tags by input and remove already selected ones
+    const filtered = availableTags.filter(
+      (tag) =>
+        tag.name.toLowerCase().includes(value.toLowerCase()) &&
+        !selectedTags.includes(tag.id)
+    );
+
+    setTagSuggestions(filtered);
+    setShowTagSuggestions(true);
+  }
+
+  function selectTagFromSuggestions(tag) {
+    addTag(tag.id, tag.name);
   }
 
   function addIngredient() {
@@ -219,17 +259,36 @@ export default function CreateRecipes() {
               type="text"
               placeholder="ex. breakfast, healthy, dinner"
               value={tagInput}
-              onChange={(event) => setTagInput(event.target.value)}
-              onKeyDown={handleTagKeyDown}
+              onChange={(event) => handleTagInputChange(event.target.value)}
+              onFocus={() => tagInput.trim().length > 0 && setShowTagSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
             />
+            {showTagSuggestions && tagSuggestions.length > 0 && (
+              <div className="tag-suggestions-dropdown">
+                {tagSuggestions.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    className="tag-suggestion-item"
+                    onClick={() => selectTagFromSuggestions(tag)}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </label>
 
           <div className="tag-preview" aria-label="Selected tags">
-            {selectedTags.map((tag) => (
-              <button type="button" key={tag} onClick={() => removeTag(tag)}>
-                {tag}
-              </button>
-            ))}
+            {selectedTags.map((tagId) => {
+              const tag = availableTags.find((t) => t.id === tagId);
+              return (
+                <button type="button" key={tagId} onClick={() => removeTag(tagId)} className="tag-button">
+                  <span className="tag-name">{tag?.name || tagId}</span>
+                  <span className="tag-remove-icon">×</span>
+                </button>
+              );
+            })}
           </div>
 
           <section className="ingredients-section">

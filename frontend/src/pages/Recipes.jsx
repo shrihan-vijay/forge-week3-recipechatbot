@@ -13,9 +13,7 @@ function Recipes() {
     loading: communityLoading,
     fetchRecipes,
     fetchTags,
-    fetchRecipesByTag,
-    searchRecipes,
-  } = useRecipes();
+  } = useRecipes(); // Removed unused fetchRecipesByTag and searchRecipes
 
   const { user } = useUser();
   const userId = user?.uid || user?.id;
@@ -27,6 +25,7 @@ function Recipes() {
   const [officialLoading, setOfficialLoading] = useState(false);
   const [savedRecipes, setSavedRecipes] = useState([]);
 
+  // 1. Fetch Official Recipes once on component mount
   useEffect(() => {
     async function fetchOfficialRecipes() {
       try {
@@ -47,38 +46,25 @@ function Recipes() {
       }
     }
 
-    if (activeTab === "official") {
-      fetchOfficialRecipes();
-    }
-  }, [activeTab]);
+    fetchOfficialRecipes();
+  }, []);
 
+  // 2. Handle Tab Switching & State Resets (Kept exactly as you wanted!)
   useEffect(() => {
-    if (activeTab !== "community") return;
+    setSelectedTag("");
+    setSearchTerm("");
 
-    const trimmedSearch = searchTerm.trim();
-
-    if (trimmedSearch) {
-      searchRecipes(trimmedSearch);
-      setSelectedTag("");
-    } else {
-      if (selectedTag) {
-        fetchRecipesByTag(selectedTag);
-      } else {
-        fetchRecipes();
-      }
+    if (activeTab === "community") {
+      fetchRecipes(); // Ensure base community recipes are freshly loaded
     }
-  }, [activeTab, searchTerm, selectedTag, fetchRecipes, searchRecipes, fetchRecipesByTag]);
+  }, [activeTab, fetchRecipes]);
 
+  // 3. Fetch tags on mount
   useEffect(() => {
     fetchTags();
   }, [fetchTags]);
 
-  useEffect(() => {
-    if (activeTab === "community" && searchTerm === "") {
-      fetchRecipes();
-    }
-  }, [searchTerm, activeTab, fetchRecipes]);
-
+  // 4. Fetch User Saved Recipes
   useEffect(() => {
     async function fetchSavedRecipes() {
       if (!userId) return;
@@ -105,7 +91,7 @@ function Recipes() {
 
     if (recipe.tags?.length > 0 && tags?.length > 0) {
       names = recipe.tags
-        .map((tagId) => tags.find((tag) => tag.id === tagId)?.name)
+        .map((tagId) => tags.find((tag) => tag.id === tagId || String(tag.id) === String(tagId))?.name)
         .filter(Boolean);
     }
 
@@ -166,20 +152,37 @@ function Recipes() {
     }
   }
 
-  // Derive client-side filtered view for official recipes vs raw data for community
+  // 5. Client-side filtered view for OFFICIAL recipes
   const officialFilteredRecipes = officialRecipes.filter((recipe) => {
     const matchesSearch = recipe.title
       ?.toLowerCase()
       .includes(searchTerm.toLowerCase());
 
     const matchesTag =
-      !selectedTag || recipe.tags?.includes(selectedTag);
+      !selectedTag || 
+      recipe.tags?.includes(selectedTag) || 
+      recipe.tags?.includes(Number(selectedTag));
 
     return matchesSearch && matchesTag;
   });
 
+  // 6. Client-side filtered view for COMMUNITY recipes
+  const communityFilteredRecipes = communityRecipes.filter((recipe) => {
+    const matchesSearch = recipe.title
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    const matchesTag =
+      !selectedTag || 
+      recipe.tags?.includes(selectedTag) || 
+      recipe.tags?.includes(Number(selectedTag));
+
+    return matchesSearch && matchesTag;
+  });
+
+  // 7. Determine which array to render based on the active tab
   const recipes =
-    activeTab === "official" ? officialFilteredRecipes : communityRecipes;
+    activeTab === "official" ? officialFilteredRecipes : communityFilteredRecipes;
 
   const loading = activeTab === "official" ? officialLoading : communityLoading;
 
@@ -220,10 +223,7 @@ function Recipes() {
           <select
             id="tag-select"
             value={selectedTag}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSelectedTag(value);
-            }}
+            onChange={(e) => setSelectedTag(e.target.value)}
             className="tag-filter-select"
           >
             <option value="">All tags</option>
