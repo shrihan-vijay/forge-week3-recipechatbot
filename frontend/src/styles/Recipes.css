@@ -123,14 +123,16 @@
   padding: 22px;
   display: flex;
   flex-direction: column;
+  max-width: 300px;
 }
 
 .recipe-image {
   width: 150px;
   height: 150px;
   object-fit: cover;
-  margin-bottom: 24px;
+  margin: 0 auto 24px auto;
   background-color: #e7e7e7;
+  display: block;
 }
 
 .recipe-card h3 {
@@ -138,6 +140,7 @@
   font-size: 24px;
   line-height: 1.35;
   font-weight: 700;
+  text-align: center;
 }
 
 .recipe-card p {

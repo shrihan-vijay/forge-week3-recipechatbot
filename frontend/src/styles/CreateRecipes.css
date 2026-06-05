@@ -129,6 +129,75 @@
   color: #3d4b52;
   padding: 6px 12px;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.tag-preview button:hover {
+  background: #a3bdd0;
+  transform: scale(1.05);
+}
+
+.tag-name {
+  display: inline;
+}
+
+.tag-remove-icon {
+  font-size: 18px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.2s;
+  line-height: 1;
+}
+
+.tag-preview button:hover .tag-remove-icon {
+  opacity: 1;
+}
+
+.tag-search-field {
+  position: relative;
+}
+
+.tag-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tag-suggestion-item {
+  width: 100%;
+  display: block;
+  border: none;
+  background: white;
+  color: #2b2418;
+  padding: 10px 12px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tag-suggestion-item:hover {
+  background: #f0f0f0;
+}
+
+.tag-suggestion-item:first-child {
+  border-radius: 3px 3px 0 0;
+}
+
+.tag-suggestion-item:last-child {
+  border-radius: 0 0 3px 3px;
 }
 
 .ingredients-section {
